@@ -555,5 +555,89 @@ function updatePendingBadges() {
     });
 }
 
+// ── Google Calendar Sync ──
+let tokenClient;
+let gcalSchedulesToSync = [];
+
+function syncToGoogleCalendar() {
+    if (!window.GOOGLE_CLIENT_ID || window.GOOGLE_CLIENT_ID === "YOUR_GOOGLE_CLIENT_ID_HERE") {
+        showToast('Google Client ID belum dikonfigurasi.', 'error', 'Hubungi Admin untuk mensetting Client ID di file konfigurasi.');
+        return;
+    }
+
+    const approved = DB.getSchedulesByTeacher(teacherId).filter(s => s.status === 'approved');
+    if (!approved.length) {
+        showToast('Tidak ada jadwal disetujui yang bisa di-sync.', 'warning');
+        return;
+    }
+
+    gcalSchedulesToSync = approved;
+
+    if (!tokenClient) {
+        tokenClient = google.accounts.oauth2.initTokenClient({
+            client_id: window.GOOGLE_CLIENT_ID,
+            scope: 'https://www.googleapis.com/auth/calendar.events',
+            callback: (tokenResponse) => {
+                if (tokenResponse && tokenResponse.access_token) {
+                    processGoogleCalendarSync(tokenResponse.access_token);
+                }
+            },
+        });
+    }
+
+    // Trigger OAuth popup
+    tokenClient.requestAccessToken();
+}
+
+async function processGoogleCalendarSync(accessToken) {
+    showToast('Memulai sinkronisasi jadwal...', 'info', 'Mohon tunggu sebentar.');
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const sched of gcalSchedulesToSync) {
+        const event = {
+            summary: `Mengajar: ${sched.subject}`,
+            location: `Brain Academia Pinrang (Ruang: ${sched.room})`,
+            description: `Mata Pelajaran: ${sched.subject}\nRombel: ${sched.rombel}\nKeterangan: ${sched.ket || '-'}`,
+            start: {
+                dateTime: `${sched.date}T${sched.startTime}:00`,
+                timeZone: 'Asia/Makassar'
+            },
+            end: {
+                dateTime: `${sched.date}T${sched.endTime}:00`,
+                timeZone: 'Asia/Makassar'
+            }
+        };
+
+        try {
+            const res = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(event)
+            });
+
+            if (res.ok) {
+                successCount++;
+            } else {
+                console.error('Gagal sync jadwal', await res.text());
+                failCount++;
+            }
+        } catch (e) {
+            console.error('Error saat sync:', e);
+            failCount++;
+        }
+    }
+
+    if (successCount > 0) {
+        showToast(`${successCount} jadwal berhasil ditambahkan ke Google Calendar!`, 'success');
+    }
+    if (failCount > 0) {
+        showToast(`${failCount} jadwal gagal disinkronkan.`, 'error');
+    }
+}
+
 // ── Boot ──
 init();

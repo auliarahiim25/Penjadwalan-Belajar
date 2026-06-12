@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Portal Master Teacher — Brain Academia Pinrang</title>
     <link rel="stylesheet" href="styles.css">
+    
+    <!-- Google Identity Services & API Client -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="https://apis.google.com/js/api.js"></script>
+    
     <style>
         #fb-loading-overlay {
             position: fixed; inset: 0; z-index: 99999;
@@ -164,6 +169,7 @@
                 </div>
                 <!-- Toggle View -->
                 <div class="view-toggle-bar">
+                    <button class="btn btn-primary btn-sm" onclick="syncToGoogleCalendar()" style="margin-right: 1rem; border-radius: 8px;">🔄 Sync ke Google Calendar</button>
                     <button class="view-toggle-btn active" id="btn-view-list" onclick="setSchedulesView('list')">📋 Daftar</button>
                     <button class="view-toggle-btn" id="btn-view-grid" onclick="setSchedulesView('grid')">📅 Grid Mingguan</button>
                 </div>

@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Penjadwalan MT — Brain Academia Pinrang</title>
+    <meta name="description" content="Platform penjadwalan Master Teacher Brain Academia Cabang Pinrang">
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .login-switch-form { animation: fadeUp .3s ease; }
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(12px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .pin-input-row {
+            display: flex;
+            gap: .5rem;
+            justify-content: center;
+            margin: 1rem 0;
+        }
+        .pin-digit {
+            width: 52px;
+            height: 56px;
+            border: 2px solid var(--border-color);
+            border-radius: var(--radius);
+            background: var(--bg-sidebar);
+            color: var(--text-primary);
+            font-size: 1.4rem;
+            font-weight: 800;
+            text-align: center;
+            caret-color: var(--ba-red);
+            transition: border-color .2s;
+        }
+        .pin-digit:focus {
+            outline: none;
+            border-color: var(--ba-red);
+            box-shadow: 0 0 0 3px rgba(227,30,36,.12);
+        }
+        .back-link {
+            display: flex;
+            align-items: center;
+            gap: .4rem;
+            font-size: .82rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+            margin-bottom: 1.25rem;
+            transition: color .2s;
+        }
+        .back-link:hover { color: var(--text-primary); }
+        .version-tag {
+            position: absolute;
+            bottom: 1.5rem;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: .72rem;
+            color: var(--text-muted);
+            white-space: nowrap;
+        }
+    </style>
+</head>
+<body>
+<div id="toast-container" class="toast-container"></div>
+
+<div class="login-page">
+    <div class="login-bg-glow"></div>
+    <div class="login-bg-glow-2"></div>
+
+    <!-- ── STEP 1: Pilih Role ── -->
+    <div class="login-card" id="step-role">
+        <div class="login-logo">
+            <div>
+                <div class="login-logo-mark">BA</div>
+            </div>
+            <h2>Brain Academia Pinrang</h2>
+            <p>Platform Penjadwalan Master Teacher</p>
+        </div>
+
+        <p style="font-size:.82rem;color:var(--text-secondary);margin-bottom:1rem;text-align:center;">
+            Masuk sebagai:
+        </p>
+
+        <div class="role-selector">
+            <div class="role-card" id="role-admin" onclick="selectRole('admin')">
+                <div class="role-emoji">🛡️</div>
+                <div class="role-name">Admin</div>
+                <div class="role-desc">Kelola jadwal & MT</div>
+            </div>
+            <div class="role-card" id="role-teacher" onclick="selectRole('teacher')">
+                <div class="role-emoji">👨‍🏫</div>
+                <div class="role-name">Master Teacher</div>
+                <div class="role-desc">Atur ketersediaan</div>
+            </div>
+        </div>
+
+        <button class="btn btn-primary btn-block btn-lg" id="btn-next-role" onclick="goToLoginForm()" disabled>
+            Lanjutkan →
+        </button>
+
+        <p style="font-size:.75rem;color:var(--text-muted);text-align:center;margin-top:1.25rem;">
+            Sistem internal Brain Academia. Hanya untuk pengajar & admin.
+        </p>
+    </div>
+
+    <!-- ── STEP 2a: Admin Login ── -->
+    <div class="login-card hidden login-switch-form" id="step-admin">
+        <div class="back-link" onclick="backToRole()">← Kembali</div>
+        <div class="login-logo">
+            <div><div class="login-logo-mark">🛡️</div></div>
+            <h2>Login Admin</h2>
+            <p>Masukkan password admin untuk melanjutkan</p>
+        </div>
+        <form id="form-admin-login" onsubmit="submitAdminLogin(event)">
+            <div class="form-group">
+                <label class="form-label">Password Admin</label>
+                <input type="password" id="admin-password" class="form-control"
+                       placeholder="Masukkan password..." autocomplete="off" required>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block btn-lg" style="margin-top:.5rem;">
+                Masuk sebagai Admin
+            </button>
+        </form>
+        <p style="font-size:.75rem;color:var(--text-muted);text-align:center;margin-top:1rem;">
+            Default: <code style="color:var(--text-secondary);">admin123</code>
+        </p>
+    </div>
+
+    <!-- ── STEP 2b: Teacher Login ── -->
+    <div class="login-card hidden login-switch-form" id="step-teacher">
+        <div class="back-link" onclick="backToRole()">← Kembali</div>
+        <div class="login-logo">
+            <div><div class="login-logo-mark">👨‍🏫</div></div>
+            <h2>Portal Master Teacher</h2>
+            <p>Pilih nama dan masukkan PIN Anda</p>
+        </div>
+        <form id="form-teacher-login" onsubmit="submitTeacherLogin(event)">
+            <div class="form-group">
+                <label class="form-label">Nama Master Teacher</label>
+                <select id="teacher-select" class="form-control" required>
+                    <option value="">— Pilih nama Anda —</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label" style="text-align:center;display:block;">PIN (4 digit)</label>
+                <div class="pin-input-row" id="pin-row">
+                    <input class="pin-digit" maxlength="1" type="password" inputmode="numeric" pattern="[0-9]" id="pin-0">
+                    <input class="pin-digit" maxlength="1" type="password" inputmode="numeric" pattern="[0-9]" id="pin-1">
+                    <input class="pin-digit" maxlength="1" type="password" inputmode="numeric" pattern="[0-9]" id="pin-2">
+                    <input class="pin-digit" maxlength="1" type="password" inputmode="numeric" pattern="[0-9]" id="pin-3">
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block btn-lg">
+                Masuk ke Portal Saya
+            </button>
+        </form>
+        <p style="font-size:.75rem;color:var(--text-muted);text-align:center;margin-top:1rem;">
+            PIN default: <code style="color:var(--text-secondary);">1234</code>
+        </p>
+    </div>
+
+    <span class="version-tag">Brain Academia Pinrang · Sistem Penjadwalan v2.0</span>
+</div>
+
+<script src="firebase-config.js"></script>
+<script src="data.js"></script>
+<script src="firebase.js"></script>
+<script>
+let selectedRole = null;
+
+function selectRole(role) {
+    selectedRole = role;
+    document.getElementById('role-admin').classList.toggle('selected', role === 'admin');
+    document.getElementById('role-teacher').classList.toggle('selected', role === 'teacher');
+    document.getElementById('btn-next-role').disabled = false;
+}
+
+function goToLoginForm() {
+    if (!selectedRole) return;
+    document.getElementById('step-role').classList.add('hidden');
+    if (selectedRole === 'admin') {
+        document.getElementById('step-admin').classList.remove('hidden');
+        document.getElementById('admin-password').focus();
+    } else {
+        document.getElementById('step-teacher').classList.remove('hidden');
+        populateTeacherSelect();
+        setupPinInputs();
+    }
+}
+
+function backToRole() {
+    document.getElementById('step-admin').classList.add('hidden');
+    document.getElementById('step-teacher').classList.add('hidden');
+    document.getElementById('step-role').classList.remove('hidden');
+}
+
+async function populateTeacherSelect() {
+    const sel = document.getElementById('teacher-select');
+    sel.innerHTML = '<option value="">— Pilih nama Anda —</option>';
+    // Use FireDB if available, else fall back to local DB
+    const teachers = (typeof FireDB !== 'undefined') ? await FireDB.getTeachers() : DB.getTeachers();
+    teachers.forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t.id;
+        opt.textContent = t.name;
+        sel.appendChild(opt);
+    });
+}
+
+function setupPinInputs() {
+    const digits = document.querySelectorAll('.pin-digit');
+    digits.forEach((d, i) => {
+        d.value = '';
+        d.addEventListener('input', () => {
+            if (d.value && i < digits.length - 1) digits[i+1].focus();
+        });
+        d.addEventListener('keydown', e => {
+            if (e.key === 'Backspace' && !d.value && i > 0) digits[i-1].focus();
+        });
+    });
+    digits[0].focus();
+}
+
+function submitAdminLogin(e) {
+    e.preventDefault();
+    const pw = document.getElementById('admin-password').value;
+    if (pw === ADMIN_PASSWORD) {
+        Session.save('admin');
+        showToast('Selamat datang, Admin!', 'success');
+        setTimeout(() => window.location.href = 'admin.html', 600);
+    } else {
+        showToast('Password salah. Coba lagi.', 'error');
+        document.getElementById('admin-password').value = '';
+        document.getElementById('admin-password').focus();
+    }
+}
+
+function submitTeacherLogin(e) {
+    e.preventDefault();
+    const teacherId = document.getElementById('teacher-select').value;
+    if (!teacherId) { showToast('Pilih nama Anda terlebih dahulu.', 'warning'); return; }
+
+    const pin = [0,1,2,3].map(i => document.getElementById('pin-'+i).value).join('');
+    if (pin.length < 4) { showToast('Masukkan 4 digit PIN.', 'warning'); return; }
+
+    const teacher = DB.getTeacher(teacherId);
+    if (teacher && teacher.pin === pin) {
+        Session.save('teacher', teacherId);
+        showToast(`Selamat datang, ${teacher.name}!`, 'success');
+        setTimeout(() => window.location.href = 'teacher.html', 600);
+    } else {
+        showToast('PIN salah. Coba lagi.', 'error');
+        document.querySelectorAll('.pin-digit').forEach(d => d.value = '');
+        document.getElementById('pin-0').focus();
+    }
+}
+
+// ── Toast utility ──
+function showToast(msg, type='info') {
+    const icons = { success:'✅', error:'❌', warning:'⚠️', info:'ℹ️' };
+    const t = document.createElement('div');
+    t.className = `toast ${type}`;
+    t.innerHTML = `<span class="toast-icon">${icons[type]||'ℹ️'}</span>
+                   <span class="toast-text">${msg}</span>`;
+    document.getElementById('toast-container').appendChild(t);
+    setTimeout(() => t.remove(), 3500);
+}
+
+// Auto-redirect if session active
+const sess = Session.get();
+if (sess) {
+    if (sess.role === 'admin') window.location.href = 'admin.html';
+    else if (sess.role === 'teacher') window.location.href = 'teacher.html';
+}
+</script>
+</body>
+</html>

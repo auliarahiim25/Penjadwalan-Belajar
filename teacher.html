@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal Master Teacher — Brain Academia Pinrang</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        #fb-loading-overlay {
+            position: fixed; inset: 0; z-index: 99999;
+            background: var(--bg-main, #0f1117);
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            gap: 1rem; transition: opacity .4s;
+        }
+        #fb-loading-overlay.hidden { opacity: 0; pointer-events: none; }
+        .fb-spinner {
+            width: 44px; height: 44px;
+            border: 4px solid rgba(255,255,255,.15);
+            border-top-color: #e31e24;
+            border-radius: 50%;
+            animation: spin .8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .fb-loading-text { color: #fff; font-size: .9rem; font-weight: 600; opacity: .8; }
+        .fb-loading-sub  { color: rgba(255,255,255,.4); font-size: .75rem; }
+    </style>
+</head>
+<body>
+<div id="fb-loading-overlay">
+    <div class="fb-spinner"></div>
+    <div class="fb-loading-text">🔥 Menghubungkan ke Firebase…</div>
+    <div class="fb-loading-sub">Memuat data terbaru dari cloud</div>
+</div>
+<div id="toast-container" class="toast-container"></div>
+
+<!-- ══ HEADER ══ -->
+<header class="main-header">
+    <div class="header-logo">
+        <img src="logo.png" alt="Brain Academia Center" class="logo-img">
+        <div class="logo-text-wrap">
+            <div class="logo-name">Brain Academia</div>
+            <div class="logo-branch">Portal Master Teacher — Pinrang</div>
+        </div>
+    </div>
+    <nav class="header-nav">
+        <span class="nav-link active" onclick="switchPage('dashboard')">🏠 Dashboard</span>
+        <span class="nav-link" onclick="switchPage('availability')">🗓️ Ketersediaan</span>
+        <span class="nav-link" onclick="switchPage('myschedules')">
+            📋 Jadwal Saya
+            <span id="header-pending-badge" class="notif-badge hidden">0</span>
+        </span>
+    </nav>
+    <div class="header-right">
+        <div class="user-chip">
+            <div class="user-avatar" id="header-avatar">MT</div>
+            <div>
+                <div style="font-size:.8rem;font-weight:700;" id="header-name">—</div>
+                <div class="role-tag">Master Teacher</div>
+            </div>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="doLogout()">Keluar</button>
+    </div>
+</header>
+
+<!-- ══ LAYOUT ══ -->
+<div class="teacher-layout">
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-section-title">Menu</div>
+        <div class="sidebar-link active" id="sb-dashboard" onclick="switchPage('dashboard')">
+            <span class="s-icon">🏠</span> Dashboard
+        </div>
+        <div class="sidebar-link" id="sb-availability" onclick="switchPage('availability')">
+            <span class="s-icon">🗓️</span> Atur Ketersediaan
+        </div>
+        <div class="sidebar-link" id="sb-myschedules" onclick="switchPage('myschedules')">
+            <span class="s-icon">📋</span> Jadwal Saya
+            <span id="sb-pending-badge" class="notif-badge hidden">0</span>
+        </div>
+        <div class="sidebar-section-title" style="margin-top:auto;"></div>
+        <div class="sidebar-link" onclick="doLogout()">
+            <span class="s-icon">🚪</span> Keluar
+        </div>
+    </aside>
+
+    <!-- Content -->
+    <main class="teacher-content">
+
+        <!-- ═══ PAGE: DASHBOARD ═══ -->
+        <div id="page-dashboard" class="tab-pane active">
+            <div style="margin-bottom: 1.5rem;">
+                <h2 style="font-size: 1.6rem; font-weight: 800; color: var(--text-primary); margin-bottom: 0.25rem;">Selamat datang, Master Teacher!</h2>
+                <p style="color: var(--text-secondary); font-size: 0.95rem;">Berikut adalah ringkasan jadwal dan aktivitas Anda.</p>
+            </div>
+
+            <!-- Profile Card -->
+            <div class="hero-card" id="profile-card" style="margin-bottom: 1.5rem;">
+                <div class="hero-card-left">
+                    <div class="profile-avatar-lg" id="dash-avatar" style="border: 2px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.15);">MT</div>
+                    <div>
+                        <div class="profile-name" id="dash-name" style="font-size: 1.5rem; font-weight: 800; margin-bottom: 0.25rem;">—</div>
+                        <div class="profile-role" style="font-size: 0.85rem; color: rgba(255,255,255,0.8);">Master Teacher · Brain Academia Pinrang</div>
+                        <div class="profile-subjects" id="dash-subjects" style="margin-top: 0.75rem;"></div>
+                    </div>
+                </div>
+                <div class="hero-stats">
+                    <div class="hero-stat-box" style="text-align: center; padding: 1.25rem 1.5rem;">
+                        <div style="font-size: 0.75rem; color: rgba(255,255,255,0.8); margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.05em;">Status</div>
+                        <div style="font-size: 1.2rem; font-weight: 800; color: #69DB7C;">● AKTIF</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Stats -->
+            <div class="stats-row" id="teacher-stats"></div>
+
+            <!-- Notification quick-access -->
+            <div id="pending-notif-section"></div>
+
+            <!-- Recent schedule -->
+            <h3 style="margin:1.5rem 0 .75rem;">📌 Jadwal Minggu Ini</h3>
+            <div id="dash-recent-schedules"></div>
+        </div>
+
+        <!-- ═══ PAGE: AVAILABILITY ═══ -->
+        <div id="page-availability" class="tab-pane">
+            <div class="page-header">
+                <div>
+                    <div class="page-title">🗓️ Atur Ketersediaan Mengajar</div>
+                    <div class="page-subtitle">Daftar hari, waktu, dan mata pelajaran yang bersedia Anda ajarkan</div>
+                </div>
+                <button class="btn btn-primary" onclick="openAddAvailModal()">
+                    ➕ Tambah Ketersediaan
+                </button>
+            </div>
+
+            <div class="card" style="padding:0;overflow:hidden;">
+                <div class="table-wrapper" style="border:none;border-radius:0;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Tanggal / Hari</th>
+                                <th>Mata Pelajaran</th>
+                                <th>Waktu Mengajar</th>
+                                <th style="text-align: center; width: 120px;">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="avail-list-tbody">
+                            <!-- Dynamically populated -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ PAGE: MY SCHEDULES ═══ -->
+        <div id="page-myschedules" class="tab-pane">
+            <div class="page-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+                <div>
+                    <div class="page-title">📋 Jadwal Saya</div>
+                    <div class="page-subtitle">Jadwal yang di-assign oleh Admin — harap segera konfirmasi</div>
+                </div>
+                <!-- Toggle View -->
+                <div class="view-toggle-bar">
+                    <button class="view-toggle-btn active" id="btn-view-list" onclick="setSchedulesView('list')">📋 Daftar</button>
+                    <button class="view-toggle-btn" id="btn-view-grid" onclick="setSchedulesView('grid')">📅 Grid Mingguan</button>
+                </div>
+            </div>
+
+            <!-- Filter tabs -->
+            <div class="tabs-bar">
+                <button class="tab-btn active" id="tab-all"       onclick="filterSchedules('all')">Semua</button>
+                <button class="tab-btn"         id="tab-pending"   onclick="filterSchedules('pending')">
+                    ⏳ Menunggu <span id="tab-pending-count" class="notif-badge" style="position:static;margin-left:.2rem;display:none;"></span>
+                </button>
+                <button class="tab-btn"         id="tab-approved"  onclick="filterSchedules('approved')">✅ Disetujui</button>
+                <button class="tab-btn"         id="tab-rejected"  onclick="filterSchedules('rejected')">❌ Ditolak</button>
+            </div>
+
+            <!-- List View Container -->
+            <div id="schedules-list-view">
+                <div id="schedules-list-container">
+                    <!-- Dynamically populated -->
+                </div>
+            </div>
+
+            <!-- Grid View Container -->
+            <div id="schedules-grid-view" class="hidden">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1.25rem; flex-wrap:wrap; gap:1rem;">
+                    <div class="week-nav-container">
+                        <button class="btn btn-secondary btn-sm" onclick="changeTeacherWeek(-1)">⬅️ Sebelumnya</button>
+                        <span class="week-nav-title" id="teacher-week-label">—</span>
+                        <button class="btn btn-secondary btn-sm" onclick="changeTeacherWeek(1)">Berikutnya ➡️</button>
+                    </div>
+                </div>
+                <div class="weekly-board" id="schedules-weekly-board">
+                    <!-- Dynamically populated -->
+                </div>
+            </div>
+        </div>
+
+    </main>
+</div>
+
+<!-- ══ MODAL: REJECT REASON ══ -->
+<div class="modal-overlay" id="modal-reject">
+    <div class="modal-box">
+        <button class="modal-close-btn" onclick="closeModal('modal-reject')">×</button>
+        <div class="modal-header">
+            <div class="modal-icon" style="background:var(--danger-light);color:var(--danger);">❌</div>
+            <div class="modal-title">Tolak Jadwal</div>
+            <div class="modal-subtitle">Berikan alasan penolakan agar Admin bisa melakukan penyesuaian</div>
+        </div>
+        <input type="hidden" id="reject-schedule-id">
+        <div class="form-group">
+            <label class="form-label">Alasan Penolakan</label>
+            <textarea id="reject-reason-input" class="form-control" rows="3"
+                placeholder="Contoh: Ada acara keluarga, tidak bisa hadir di waktu tersebut..."></textarea>
+        </div>
+        <div style="display:flex;gap:.75rem;justify-content:flex-end;">
+            <button class="btn btn-outline" onclick="closeModal('modal-reject')">Batal</button>
+            <button class="btn btn-danger" onclick="confirmReject()">❌ Konfirmasi Penolakan</button>
+        </div>
+    </div>
+</div>
+
+<!-- ══ BOTTOM NAV FOR MOBILE ══ -->
+<div class="bottom-nav">
+    <div class="bottom-nav-item active" id="bn-dashboard" onclick="switchPage('dashboard')">
+        <span class="bottom-nav-icon">🏠</span>
+        <span>Dashboard</span>
+    </div>
+    <div class="bottom-nav-item" id="bn-availability" onclick="switchPage('availability')">
+        <span class="bottom-nav-icon">🗓️</span>
+        <span>Ketersediaan</span>
+    </div>
+    <div class="bottom-nav-item" id="bn-myschedules" onclick="switchPage('myschedules')">
+        <span class="bottom-nav-icon">📋</span>
+        <span>Jadwal Saya</span>
+        <span id="bn-pending-badge" class="notif-badge hidden">0</span>
+    </div>
+</div>
+
+<!-- ══ MODAL: ADD AVAILABILITY ══ -->
+<div class="modal-overlay" id="modal-avail">
+    <div class="modal-box">
+        <button class="modal-close-btn" onclick="closeModal('modal-avail')">×</button>
+        <div class="modal-header">
+            <div class="modal-icon" style="background:var(--success-light);color:var(--success);">🗓️</div>
+            <div class="modal-title">Tambah Ketersediaan</div>
+            <div class="modal-subtitle">Tentukan waktu mengajar dan mata pelajaran Anda</div>
+        </div>
+        <form id="form-avail" onsubmit="submitAvailabilityForm(event)">
+            <div class="form-group">
+                <label class="form-label">Pilih Tanggal</label>
+                <input type="date" id="avail-date" class="form-control" required>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Mata Pelajaran</label>
+                <select id="avail-subject-select" class="form-control" onchange="toggleCustomSubject()" required>
+                    <!-- Populated dynamically from teacher subjects -->
+                </select>
+                <div id="avail-custom-subject-wrapper" class="hidden mt-2">
+                    <input type="text" id="avail-custom-subject" class="form-control" placeholder="Tulis mata pelajaran kustom...">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Jam Mulai</label>
+                    <input type="time" id="avail-start" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Jam Selesai</label>
+                    <input type="time" id="avail-end" class="form-control" required>
+                </div>
+            </div>
+
+            <div style="display:flex;gap:.75rem;justify-content:flex-end;margin-top:1.5rem;">
+                <button type="button" class="btn btn-outline" onclick="closeModal('modal-avail')">Batal</button>
+                <button type="submit" class="btn btn-success">💾 Simpan Ketersediaan</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script src="firebase-config.js"></script>
+<script src="data.js"></script>
+<script src="firebase.js"></script>
+<script src="teacher.js"></script>
+</body>
+</html>

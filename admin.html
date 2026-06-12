@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin — Penjadwalan MT Brain Academia Pinrang</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        #fb-loading-overlay {
+            position: fixed; inset: 0; z-index: 99999;
+            background: var(--bg-main, #0f1117);
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            gap: 1rem; transition: opacity .4s;
+        }
+        #fb-loading-overlay.hidden { opacity: 0; pointer-events: none; }
+        .fb-spinner {
+            width: 44px; height: 44px;
+            border: 4px solid rgba(255,255,255,.15);
+            border-top-color: #e31e24;
+            border-radius: 50%;
+            animation: spin .8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .fb-loading-text { color: #fff; font-size: .9rem; font-weight: 600; opacity: .8; }
+        .fb-loading-sub  { color: rgba(255,255,255,.4); font-size: .75rem; }
+    </style>
+</head>
+<body>
+<div id="fb-loading-overlay">
+    <div class="fb-spinner"></div>
+    <div class="fb-loading-text">🔥 Menghubungkan ke Firebase…</div>
+    <div class="fb-loading-sub">Memuat data terbaru dari cloud</div>
+</div>
+<div id="toast-container" class="toast-container"></div>
+
+<!-- ══ HEADER ══ -->
+<header class="main-header">
+    <div class="header-logo">
+        <img src="logo.png" alt="Brain Academia Center" class="logo-img">
+        <div class="logo-text-wrap">
+            <div class="logo-name">Brain Academia</div>
+            <div class="logo-branch">Admin — Cabang Pinrang</div>
+        </div>
+    </div>
+    <nav class="header-nav">
+        <span class="nav-link active" onclick="switchPage('overview')">📊 Overview</span>
+        <span class="nav-link" onclick="switchPage('schedules')">📅 Jadwal</span>
+        <span class="nav-link" onclick="switchPage('timetable')">🗺️ Peta Jadwal</span>
+        <span class="nav-link" onclick="switchPage('teachers')">👥 MT</span>
+    </nav>
+    <div class="header-right">
+        <div class="user-chip">
+            <div class="user-avatar">A</div>
+            <div>
+                <div style="font-size:.8rem;font-weight:700;">Admin</div>
+                <div class="role-tag">Administrator</div>
+            </div>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="doLogout()">Keluar</button>
+    </div>
+</header>
+
+<!-- ══ LAYOUT ══ -->
+<div class="admin-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-section-title">Menu</div>
+        <div class="sidebar-link active" id="sb-overview" onclick="switchPage('overview')">
+            <span class="s-icon">📊</span> Overview Ketersediaan
+        </div>
+        <div class="sidebar-link" id="sb-schedules" onclick="switchPage('schedules')">
+            <span class="s-icon">📅</span> Kelola Jadwal
+            <span id="sb-pending-badge" class="notif-badge hidden">0</span>
+        </div>
+        <div class="sidebar-link" id="sb-timetable" onclick="switchPage('timetable')">
+            <span class="s-icon">🗺️</span> Peta Jadwal Kelas
+        </div>
+        <div class="sidebar-link" id="sb-teachers" onclick="switchPage('teachers')">
+            <span class="s-icon">👥</span> Data Master Teacher
+        </div>
+        <div class="sidebar-section-title" style="margin-top:auto;">Sistem</div>
+        <div class="sidebar-link" id="sb-firebase-status" style="cursor:default; font-size:.78rem; gap:.4rem;" title="Status koneksi Firebase">
+            <span class="s-icon">🔥</span>
+            <span id="fb-status-label">Menghubungkan…</span>
+        </div>
+        <div class="sidebar-link" onclick="pushToFirebase()" title="Upload data lokal ke Firestore">
+            <span class="s-icon">☁️</span> Upload ke Firebase
+        </div>
+        <div class="sidebar-link" onclick="resetData()">
+            <span class="s-icon">🔄</span> Reset Data
+        </div>
+        <div class="sidebar-link" onclick="doLogout()">
+            <span class="s-icon">🚪</span> Keluar
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="admin-content">
+
+        <!-- ═══ PAGE: OVERVIEW ═══ -->
+        <div id="page-overview" class="tab-pane active">
+            <div style="margin-bottom: 1.5rem;">
+                <h2 style="font-size: 1.6rem; font-weight: 800; color: var(--text-primary); margin-bottom: 0.25rem;">Selamat pagi, Admin!</h2>
+                <p style="color: var(--text-secondary); font-size: 0.95rem;">Brain Academia Center siap untuk hari ini.</p>
+            </div>
+
+            <!-- Hero Banner -->
+            <div class="hero-card">
+                <div class="hero-card-left">
+                    <div class="hero-icon">✨</div>
+                    <div>
+                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                            <span class="status-badge" style="background: rgba(255,255,255,0.2); color: white;">● SISTEM AKTIF</span>
+                        </div>
+                        <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 0.25rem;">Sistem Penjadwalan Berjalan</h3>
+                        <div style="margin-top: 0.75rem; display: flex; gap: 0.75rem;">
+                            <button class="btn btn-outline" style="color: white; border-color: rgba(255,255,255,0.4); border-radius: 99px; padding: 0.35rem 1rem; font-size: 0.8rem;" onclick="openAssignModal()">+ Assign Jadwal Baru</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="hero-stats">
+                    <div class="hero-stat-box">
+                        <div style="font-size: 0.75rem; color: rgba(255,255,255,0.8); margin-bottom: 0.25rem; display: flex; gap: 0.5rem; align-items: center;">
+                            <span>📅 Total MT Aktif</span>
+                        </div>
+                        <div style="font-size: 2rem; font-weight: 800; display: flex; align-items: flex-end; gap: 1rem;">
+                            <span id="hero-stat-today">24</span>
+                            <div class="hero-chart-bars">
+                                <div></div><div style="height: 60%"></div><div style="height: 80%"></div><div style="height: 40%"></div><div style="height: 100%"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="hero-stat-box">
+                        <div style="font-size: 0.75rem; color: rgba(255,255,255,0.8); margin-bottom: 0.25rem; display: flex; gap: 0.5rem; align-items: center;">
+                            <span>✅ Disetujui</span>
+                        </div>
+                        <div style="font-size: 2rem; font-weight: 800; display: flex; align-items: flex-end; gap: 1rem;">
+                            <span id="hero-stat-approved">98%</span>
+                            <div class="hero-chart-bars">
+                                <div></div><div style="height: 100%"></div><div style="height: 80%"></div><div style="height: 70%"></div><div style="height: 90%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="page-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+                <div>
+                    <div class="page-title">📊 Overview Ketersediaan MT</div>
+                    <div class="page-subtitle">Ringkasan ketersediaan semua Master Teacher per hari & sesi</div>
+                </div>
+                <div class="week-nav-container">
+                    <button class="btn btn-secondary btn-sm" onclick="changeAdminWeek(-1)">⬅️ Sebelumnya</button>
+                    <span class="week-nav-title" id="admin-week-label">—</span>
+                    <button class="btn btn-secondary btn-sm" onclick="changeAdminWeek(1)">Berikutnya ➡️</button>
+                </div>
+            </div>
+
+            <!-- Stat Cards -->
+            <div class="stats-row" id="admin-stats"></div>
+
+            <!-- Legend -->
+            <div class="card card-sm mb-2" style="display:flex;align-items:center;gap:1.5rem;flex-wrap:wrap;margin-bottom:1.25rem;">
+                <span style="font-size:.8rem;font-weight:700;color:var(--text-secondary);">Keterangan:</span>
+                <span style="display:flex;align-items:center;gap:.4rem;font-size:.78rem;color:var(--text-secondary);">
+                    <span class="avail-chip" style="pointer-events:none;padding:.2rem .4rem;">➕ Jam | Mapel</span> Tersedia (Klik untuk assign jadwal)
+                </span>
+                <span style="display:flex;align-items:center;gap:.4rem;font-size:.78rem;color:var(--text-secondary);">
+                    <span class="sched-chip pending" style="pointer-events:none;padding:.2rem .4rem;min-width:auto;">⏳ Jam | Mapel</span> Menunggu konfirmasi MT
+                </span>
+                <span style="display:flex;align-items:center;gap:.4rem;font-size:.78rem;color:var(--text-secondary);">
+                    <span class="sched-chip approved" style="pointer-events:none;padding:.2rem .4rem;min-width:auto;">✅ Jam | Mapel</span> Jadwal disetujui MT
+                </span>
+            </div>
+
+            <!-- Big Table -->
+            <div class="card" style="padding:0;overflow:hidden;">
+                <div class="overview-table-wrap">
+                    <table class="overview-table" id="overview-table">
+                        <thead>
+                            <tr>
+                                <th rowspan="2" style="text-align:left;padding-left:1.25rem;">Nama MT</th>
+                                <th colspan="4">Keahlian Mengajar (Subjects)</th>
+                                <th rowspan="2">Hari</th>
+                                <th rowspan="2">Ketersediaan & Jadwal Mengajar Hari Ini</th>
+                            </tr>
+                            <tr>
+                                <th>SD</th><th>SMP</th><th>SMA</th><th>UTBK</th>
+                            </tr>
+                        </thead>
+                        <tbody id="overview-tbody">
+                            <!-- Dynamically populated -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ PAGE: SCHEDULES ═══ -->
+        <div id="page-schedules" class="tab-pane">
+            <div class="page-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+                <div>
+                    <div class="page-title">📅 Kelola Jadwal Mengajar</div>
+                    <div class="page-subtitle">Daftar semua jadwal yang telah di-assign ke Master Teacher</div>
+                </div>
+                <div style="display:flex; gap:1rem; align-items:center; flex-wrap:wrap;">
+                    <!-- Toggle View -->
+                    <div class="view-toggle-bar">
+                        <button class="view-toggle-btn active" id="btn-admin-view-list" onclick="setAdminSchedulesView('list')">📋 Daftar</button>
+                        <button class="view-toggle-btn" id="btn-admin-view-grid" onclick="setAdminSchedulesView('grid')">📅 Grid Mingguan</button>
+                    </div>
+                    <button class="btn btn-primary" onclick="openAssignModal()">
+                        ➕ Assign Jadwal Baru
+                    </button>
+                </div>
+            </div>
+
+            <!-- List View Section -->
+            <div id="admin-schedules-list-view">
+                <!-- Filter bar -->
+                <div class="card card-sm mb-2" style="display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1.25rem;">
+                    <select class="form-control" style="width:auto;min-width:160px;" id="filter-sched-teacher" onchange="renderSchedulesList()">
+                        <option value="">Semua MT</option>
+                    </select>
+                    <select class="form-control" style="width:auto;min-width:140px;" id="filter-sched-day" onchange="renderSchedulesList()">
+                        <option value="">Semua Hari</option>
+                        <option>Senin</option><option>Selasa</option><option>Rabu</option>
+                        <option>Kamis</option><option>Jumat</option><option>Sabtu</option>
+                    </select>
+                    <select class="form-control" style="width:auto;min-width:140px;" id="filter-sched-status" onchange="renderSchedulesList()">
+                        <option value="">Semua Status</option>
+                        <option value="pending">Menunggu</option>
+                        <option value="approved">Disetujui</option>
+                        <option value="rejected">Ditolak</option>
+                    </select>
+                </div>
+
+                <div class="card" style="padding:0;overflow:hidden;">
+                    <div class="table-wrapper" style="border:none;border-radius:0;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Master Teacher</th>
+                                    <th>Tanggal / Waktu</th>
+                                    <th>Mata Pelajaran</th>
+                                    <th>Rombel / Kelas</th>
+                                    <th>Ruangan</th>
+                                    <th>Status</th>
+                                    <th>Alasan Tolak</th>
+                                    <th>Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="schedules-tbody">
+                                <tr><td colspan="8" class="text-center text-muted" style="padding:2rem;">
+                                    Belum ada jadwal yang di-assign.
+                                </td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Grid View Section -->
+            <div id="admin-schedules-grid-view" class="hidden">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1.25rem; flex-wrap:wrap; gap:1rem;">
+                    <div class="week-nav-container">
+                        <button class="btn btn-secondary btn-sm" onclick="changeAdminSchedWeek(-1)">⬅️ Sebelumnya</button>
+                        <span class="week-nav-title" id="admin-sched-week-label">—</span>
+                        <button class="btn btn-secondary btn-sm" onclick="changeAdminSchedWeek(1)">Berikutnya ➡️</button>
+                    </div>
+                </div>
+                <div class="weekly-board" id="admin-schedules-weekly-board">
+                    <!-- Dynamically populated -->
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ PAGE: TIMETABLE (Peta Jadwal Kelas) ═══ -->
+        <div id="page-timetable" class="tab-pane">
+            <div class="page-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+                <div>
+                    <div class="page-title">🗺️ Peta Jadwal Kelas</div>
+                    <div class="page-subtitle">Template jadwal mingguan per rombel — klik slot untuk langsung assign ke MT</div>
+                </div>
+                <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;">
+                    <select class="form-control" style="width:auto;min-width:160px;" id="filter-timetable-room" onchange="renderTimetable()">
+                        <option value="">Semua Ruangan</option>
+                    </select>
+                    <button class="btn btn-secondary btn-sm" onclick="renderTimetable()">🔄 Refresh</button>
+                </div>
+            </div>
+
+            <!-- Conflict Alerts -->
+            <div id="conflict-alerts" class="conflict-alerts-container"></div>
+
+            <!-- Timetable Grid -->
+            <div class="card" style="padding:0;overflow:hidden;">
+                <div class="timetable-scroll-wrap">
+                    <table class="timetable-table" id="timetable-grid">
+                        <thead>
+                            <tr>
+                                <th class="tt-th-rombel">ROMBEL</th>
+                                <th class="tt-th-schedule">JADWAL</th>
+                                <th class="tt-th-time">WAKTU</th>
+                                <th class="tt-th-room">RUANGAN</th>
+                                <th class="tt-th-status">SENIN</th>
+                                <th class="tt-th-status">SELASA</th>
+                                <th class="tt-th-status">RABU</th>
+                                <th class="tt-th-status">KAMIS</th>
+                                <th class="tt-th-status">JUMAT</th>
+                                <th class="tt-th-status">SABTU</th>
+                            </tr>
+                        </thead>
+                        <tbody id="timetable-tbody">
+                            <!-- Dynamically populated -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Week Selector for Mapping -->
+            <div style="margin-top:1.25rem; display:flex; justify-content:center; align-items:center; gap:1rem;">
+                <button class="btn btn-secondary btn-sm" onclick="changeTimetableWeek(-1)">⬅️ Minggu Sebelumnya</button>
+                <span class="week-nav-title" id="timetable-week-label">—</span>
+                <button class="btn btn-secondary btn-sm" onclick="changeTimetableWeek(1)">Minggu Berikutnya ➡️</button>
+            </div>
+        </div>
+
+        <!-- ═══ PAGE: TEACHERS ═══ -->
+        <div id="page-teachers" class="tab-pane">
+            <div class="page-header">
+                <div>
+                    <div class="page-title">👥 Data Master Teacher</div>
+                    <div class="page-subtitle">Kelola daftar dan profil semua Master Teacher</div>
+                </div>
+                <button class="btn btn-primary" onclick="openAddTeacherModal()">
+                    ➕ Tambah MT Baru
+                </button>
+            </div>
+            <div class="teacher-mgmt-grid" id="teacher-mgmt-grid">
+                <!-- Dynamically populated -->
+            </div>
+        </div>
+
+    </main>
+</div>
+
+<!-- ══ MODAL: ASSIGN SCHEDULE ══ -->
+<div class="modal-overlay" id="modal-assign">
+    <div class="modal-box modal-lg">
+        <button class="modal-close-btn" onclick="closeModal('modal-assign')">×</button>
+        <div class="modal-header">
+            <div class="modal-icon modal-icon-red">📅</div>
+            <div class="modal-title">Assign Jadwal ke Master Teacher</div>
+            <div class="modal-subtitle">Admin menentukan jadwal mengajar untuk MT yang tersedia</div>
+        </div>
+
+        <form id="form-assign" onsubmit="submitAssign(event)">
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Master Teacher</label>
+                    <select id="assign-teacher" class="form-control" required onchange="updateAvailHint()">
+                        <option value="">— Pilih MT —</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Tanggal</label>
+                    <input type="date" id="assign-date" class="form-control" required onchange="updateAvailHint()">
+                </div>
+            </div>
+
+            <!-- Availability hint -->
+            <div id="avail-hint" class="alert alert-info hidden" style="margin-bottom:1rem;">
+                <span class="alert-icon">ℹ️</span>
+                <div id="avail-hint-text"></div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Mata Pelajaran</label>
+                    <select id="assign-subject" class="form-control" required>
+                        <option value="">— Pilih Mapel —</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Ruangan</label>
+                    <select id="assign-room" class="form-control" required>
+                        <option value="">— Pilih Ruangan —</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Jam Mulai</label>
+                    <input type="time" id="assign-start-time" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Jam Selesai</label>
+                    <input type="time" id="assign-end-time" class="form-control" required>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Rombel / Kelas</label>
+                    <select id="assign-rombel" class="form-control" required>
+                        <option value="">— Pilih Kelas —</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Keterangan (Ket)</label>
+                    <select id="assign-ket" class="form-control">
+                        <option value="">— Pilih Keterangan —</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Catatan (Opsional)</label>
+                <textarea id="assign-notes" class="form-control" rows="2"
+                    placeholder="Catatan tambahan untuk MT..."></textarea>
+            </div>
+
+            <div style="display:flex;gap:.75rem;justify-content:flex-end;margin-top:.5rem;">
+                <button type="button" class="btn btn-outline" onclick="closeModal('modal-assign')">Batal</button>
+                <button type="submit" class="btn btn-primary">📤 Kirim Jadwal ke MT</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ══ MODAL: ADD/EDIT TEACHER ══ -->
+<div class="modal-overlay" id="modal-teacher">
+    <div class="modal-box modal-lg">
+        <button class="modal-close-btn" onclick="closeModal('modal-teacher')">×</button>
+        <div class="modal-header">
+            <div class="modal-icon modal-icon-green">👨‍🏫</div>
+            <div class="modal-title" id="modal-teacher-title">Tambah Master Teacher Baru</div>
+            <div class="modal-subtitle">Isi data profil dan mata pelajaran yang diajarkan</div>
+        </div>
+
+        <form id="form-teacher" onsubmit="submitTeacherForm(event)">
+            <input type="hidden" id="edit-teacher-id">
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Nama Lengkap MT</label>
+                    <input type="text" id="mt-name" class="form-control" placeholder="Contoh: NAMIRA SANDA" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input type="text" id="mt-email" class="form-control" placeholder="email@brainacademia.id atau -">
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">PIN (4 digit)</label>
+                <input type="text" id="mt-pin" class="form-control" maxlength="6"
+                       placeholder="Contoh: 1234" pattern="[0-9]{4,6}" required>
+            </div>
+
+            <div class="divider"></div>
+            <h4 style="margin-bottom:1rem;color:var(--gray-300);">📚 Mata Pelajaran per Jenjang</h4>
+
+            <div class="form-row">
+                <div class="subj-level-section">
+                    <div class="subj-level-label">SD</div>
+                    <input type="text" id="mt-subj-sd" class="form-control"
+                           placeholder="Contoh: BINDO, MTK (pisah koma)">
+                </div>
+                <div class="subj-level-section">
+                    <div class="subj-level-label">SMP</div>
+                    <input type="text" id="mt-subj-smp" class="form-control"
+                           placeholder="Contoh: IPA-FISIKA, MTK">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="subj-level-section">
+                    <div class="subj-level-label">SMA</div>
+                    <input type="text" id="mt-subj-sma" class="form-control"
+                           placeholder="Contoh: FISIKA, MTK">
+                </div>
+                <div class="subj-level-section">
+                    <div class="subj-level-label">UTBK</div>
+                    <input type="text" id="mt-subj-utbk" class="form-control"
+                           placeholder="Contoh: PK, PM, PU">
+                </div>
+            </div>
+
+            <div style="display:flex;gap:.75rem;justify-content:flex-end;margin-top:1rem;">
+                <button type="button" class="btn btn-outline" onclick="closeModal('modal-teacher')">Batal</button>
+                <button type="submit" class="btn btn-primary" id="btn-save-teacher">💾 Simpan</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ══ MODAL: VIEW AVAIL DETAIL ══ -->
+<div class="modal-overlay" id="modal-avail-detail">
+    <div class="modal-box modal-lg">
+        <button class="modal-close-btn" onclick="closeModal('modal-avail-detail')">×</button>
+        <div class="modal-header">
+            <div class="modal-icon" style="background:var(--info-light);color:var(--info);">🗓️</div>
+            <div class="modal-title" id="avail-detail-name">Detail Ketersediaan</div>
+            <div class="modal-subtitle">Grid ketersediaan waktu mengajar yang diisi oleh MT</div>
+        </div>
+        <div id="avail-detail-content"></div>
+    </div>
+</div>
+
+<script src="firebase-config.js"></script>
+<script src="data.js"></script>
+<script src="firebase.js"></script>
+<script src="admin.js"></script>
+</body>
+</html>

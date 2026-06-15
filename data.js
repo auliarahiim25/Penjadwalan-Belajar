@@ -393,6 +393,7 @@ const SESSIONS = [
 const DAYS = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 
 const ADMIN_PASSWORD = 'admin123';
+const ADMIN_EMAILS = ['admin@brainacademia.id', 'admin@gmail.com']; // Add allowed admin emails here
 
 // --- Database API ---
 const DB = {

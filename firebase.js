@@ -53,9 +53,17 @@ async function initFirebase() {
         const { getFirestore, collection, doc, getDoc, getDocs, setDoc, addDoc, deleteDoc, updateDoc, onSnapshot, query, where } = await import(
             'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js'
         );
+        const { getAuth, signInWithPopup, GoogleAuthProvider, signOut } = await import(
+            'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js'
+        );
+        const { getStorage, ref, uploadBytes, getDownloadURL } = await import(
+            'https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js'
+        );
 
-        // Expose Firestore helpers globally so FireDB can use them
+        // Expose Firebase helpers globally so FireDB can use them
         window._FS = { collection, doc, getDoc, getDocs, setDoc, addDoc, deleteDoc, updateDoc, onSnapshot, query, where };
+        window._Auth = { signInWithPopup, GoogleAuthProvider, signOut };
+        window._Storage = { ref, uploadBytes, getDownloadURL };
 
         if (!getApps().length) {
             _app = initializeApp(cfg);
@@ -64,6 +72,8 @@ async function initFirebase() {
         }
         _db = getFirestore(_app);
         window._firestoreDb = _db;
+        window._firebaseAuth = getAuth(_app);
+        window._firebaseStorage = getStorage(_app);
 
         _fbReady = true;
         console.log('[Firebase] Connected to Firestore ✅');
@@ -240,6 +250,37 @@ const FireDB = {
         const { deleteDoc, doc } = window._FS;
         await deleteDoc(doc(_db, FS_COLLECTIONS.schedules, id));
         DB.deleteSchedule(id);
+    },
+
+    // ── AUTHENTICATION ─────────────────────────────────────────────────────────
+    async loginWithGoogle() {
+        if (!await this.isReady()) return null;
+        const auth = window._firebaseAuth;
+        const provider = new window._Auth.GoogleAuthProvider();
+        try {
+            const result = await window._Auth.signInWithPopup(auth, provider);
+            return result.user; // Contains email, displayName, photoURL
+        } catch (error) {
+            console.error('[Firebase] Google login failed:', error);
+            return null;
+        }
+    },
+
+    // ── STORAGE ─────────────────────────────────────────────────────────────
+    async uploadProfilePicture(file, userId) {
+        if (!await this.isReady()) return null;
+        try {
+            const storage = window._firebaseStorage;
+            const ext = file.name.split('.').pop();
+            const filePath = `profile_pictures/${userId}_${Date.now()}.${ext}`;
+            const storageRef = window._Storage.ref(storage, filePath);
+            await window._Storage.uploadBytes(storageRef, file);
+            const url = await window._Storage.getDownloadURL(storageRef);
+            return url;
+        } catch (error) {
+            console.error('[Firebase] Upload failed:', error);
+            return null;
+        }
     },
 
     // ── SYNC: pull Firestore data into localStorage cache ───────────────────

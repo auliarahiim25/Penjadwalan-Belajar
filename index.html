@@ -118,6 +118,13 @@
             <button type="submit" class="btn btn-primary btn-block btn-lg" style="margin-top:.5rem;">
                 Masuk sebagai Admin
             </button>
+            <div style="display:flex; align-items:center; justify-content:center; margin:1rem 0;">
+                <hr style="flex-grow:1; border:none; border-top:1px solid rgba(255,255,255,0.1);"><span style="margin:0 10px; font-size:0.8rem; color:var(--text-muted);">ATAU</span><hr style="flex-grow:1; border:none; border-top:1px solid rgba(255,255,255,0.1);">
+            </div>
+            <button type="button" class="btn btn-outline btn-block btn-lg" style="display:flex; align-items:center; justify-content:center; gap:.5rem;" onclick="loginGoogle('admin')">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google" style="width:20px; height:20px;">
+                Login dengan Google
+            </button>
         </form>
         <p style="font-size:.75rem;color:var(--text-muted);text-align:center;margin-top:1rem;">
             Default: <code style="color:var(--text-secondary);">admin123</code>
@@ -150,6 +157,13 @@
             </div>
             <button type="submit" class="btn btn-primary btn-block btn-lg">
                 Masuk ke Portal Saya
+            </button>
+            <div style="display:flex; align-items:center; justify-content:center; margin:1rem 0;">
+                <hr style="flex-grow:1; border:none; border-top:1px solid rgba(255,255,255,0.1);"><span style="margin:0 10px; font-size:0.8rem; color:var(--text-muted);">ATAU</span><hr style="flex-grow:1; border:none; border-top:1px solid rgba(255,255,255,0.1);">
+            </div>
+            <button type="button" class="btn btn-outline btn-block btn-lg" style="display:flex; align-items:center; justify-content:center; gap:.5rem;" onclick="loginGoogle('teacher')">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google" style="width:20px; height:20px;">
+                Login dengan Google
             </button>
         </form>
         <p style="font-size:.75rem;color:var(--text-muted);text-align:center;margin-top:1rem;">
@@ -250,6 +264,57 @@ function submitTeacherLogin(e) {
         showToast('PIN salah. Coba lagi.', 'error');
         document.querySelectorAll('.pin-digit').forEach(d => d.value = '');
         document.getElementById('pin-0').focus();
+    }
+}
+
+async function loginGoogle(role) {
+    if (typeof FireDB === 'undefined' || !await FireDB.isReady()) {
+        showToast('Koneksi ke Firebase gagal. Login Google tidak tersedia.', 'error');
+        return;
+    }
+
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(15,17,23,0.8);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:600;font-size:1.1rem;';
+    overlay.innerHTML = 'Membuka Login Google... <div class="fb-spinner" style="width:24px;height:24px;margin-left:10px;border-width:3px;border-top-color:#fff;"></div>';
+    document.body.appendChild(overlay);
+
+    try {
+        const user = await FireDB.loginWithGoogle();
+        document.body.removeChild(overlay);
+        if (!user) {
+            showToast('Login dibatalkan atau gagal.', 'warning');
+            return;
+        }
+
+        if (role === 'admin') {
+            if (ADMIN_EMAILS.includes(user.email)) {
+                // Set admin profile photo and name in localStorage (since admin has no fixed entry in DB for this)
+                localStorage.setItem('adminProfile', JSON.stringify({ name: user.displayName, photoURL: user.photoURL }));
+                Session.save('admin');
+                showToast(`Selamat datang, Admin ${user.displayName}!`, 'success');
+                setTimeout(() => window.location.href = 'admin.html', 600);
+            } else {
+                showToast('Email Anda tidak terdaftar sebagai Admin.', 'error');
+                // Optional: sign out to clear session
+                if (window._Auth && window._firebaseAuth) window._Auth.signOut(window._firebaseAuth);
+            }
+        } else if (role === 'teacher') {
+            const teachers = await FireDB.getTeachers();
+            const matchedTeacher = teachers.find(t => t.email && t.email.toLowerCase() === user.email.toLowerCase());
+            if (matchedTeacher) {
+                // Optionally update their photoURL and name if not set, or let them handle it via settings.
+                Session.save('teacher', matchedTeacher.id);
+                showToast(`Selamat datang, ${matchedTeacher.name}!`, 'success');
+                setTimeout(() => window.location.href = 'teacher.html', 600);
+            } else {
+                showToast('Email Anda tidak ditemukan di daftar Master Teacher.', 'error');
+                if (window._Auth && window._firebaseAuth) window._Auth.signOut(window._firebaseAuth);
+            }
+        }
+    } catch (err) {
+        if(overlay.parentNode) document.body.removeChild(overlay);
+        showToast('Terjadi kesalahan saat login Google.', 'error');
+        console.error(err);
     }
 }
 

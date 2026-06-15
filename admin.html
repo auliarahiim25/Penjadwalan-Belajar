@@ -51,9 +51,9 @@
     </nav>
     <div class="header-right">
         <div class="user-chip">
-            <div class="user-avatar">A</div>
+            <div class="user-avatar" id="header-admin-avatar">A</div>
             <div>
-                <div style="font-size:.8rem;font-weight:700;">Admin</div>
+                <div style="font-size:.8rem;font-weight:700;" id="header-admin-name">Admin</div>
                 <div class="role-tag">Administrator</div>
             </div>
         </div>
@@ -78,6 +78,9 @@
         </div>
         <div class="sidebar-link" id="sb-teachers" onclick="switchPage('teachers')">
             <span class="s-icon">👥</span> Data Master Teacher
+        </div>
+        <div class="sidebar-link" id="sb-settings" onclick="switchPage('settings')">
+            <span class="s-icon">⚙️</span> Pengaturan
         </div>
         <div class="sidebar-section-title" style="margin-top:auto;">Sistem</div>
         <div class="sidebar-link" id="sb-firebase-status" style="cursor:default; font-size:.78rem; gap:.4rem;" title="Status koneksi Firebase">
@@ -340,6 +343,41 @@
             </div>
             <div class="teacher-mgmt-grid" id="teacher-mgmt-grid">
                 <!-- Dynamically populated -->
+            </div>
+        </div>
+
+        <!-- ═══ PAGE: SETTINGS ═══ -->
+        <div id="page-settings" class="tab-pane">
+            <div class="page-header">
+                <div>
+                    <div class="page-title">⚙️ Pengaturan Profil Admin</div>
+                    <div class="page-subtitle">Perbarui profil dan kata sandi Anda</div>
+                </div>
+            </div>
+            
+            <div class="card" style="max-width: 600px;">
+                <form id="form-admin-settings" onsubmit="submitAdminSettings(event)">
+                    <div style="display:flex; align-items:center; gap: 1rem; margin-bottom: 1.5rem;">
+                        <div class="profile-avatar-lg" id="settings-admin-avatar" style="border: 2px solid var(--border-color); background: var(--bg-sidebar);">A</div>
+                        <div>
+                            <label class="form-label">Foto Profil</label>
+                            <input type="file" id="admin-photo-input" class="form-control" accept="image/*" style="font-size: 0.8rem; padding: 0.4rem;">
+                            <small style="color:var(--text-muted);">Format JPG, PNG (Maks. 2MB)</small>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Nama Admin</label>
+                        <input type="text" id="admin-name-input" class="form-control" placeholder="Admin" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Password Admin Baru (Opsional)</label>
+                        <input type="password" id="admin-pass-input" class="form-control" placeholder="Kosongkan jika tidak ingin mengubah password">
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary" id="btn-save-admin-settings" style="width:100%; margin-top: 1rem;">
+                        💾 Simpan Perubahan
+                    </button>
+                </form>
             </div>
         </div>
 

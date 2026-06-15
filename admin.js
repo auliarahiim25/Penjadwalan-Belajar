@@ -31,7 +31,27 @@ function switchPage(page) {
     if (page === 'schedules') setAdminSchedulesView(adminSchedulesView);
     if (page === 'timetable') renderTimetable();
     if (page === 'teachers')  renderTeacherMgmt();
+    if (page === 'settings')  renderAdminSettings();
 }
+
+// ── Admin Profile Initialization ──
+function initAdminProfile() {
+    const profileRaw = localStorage.getItem('adminProfile');
+    const profile = profileRaw ? JSON.parse(profileRaw) : { name: 'Admin', photoURL: null };
+    
+    // Update Header
+    document.getElementById('header-admin-name').textContent = profile.name;
+    const headerAvatar = document.getElementById('header-admin-avatar');
+    if (profile.photoURL) {
+        headerAvatar.innerHTML = `<img src="${profile.photoURL}" alt="${profile.name}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+        headerAvatar.style.background = 'transparent';
+    } else {
+        headerAvatar.innerHTML = profile.name.charAt(0).toUpperCase();
+        headerAvatar.style.background = 'var(--ba-red)';
+    }
+}
+// Call init on load
+document.addEventListener('DOMContentLoaded', initAdminProfile);
 
 function doLogout() {
     Session.clear();
@@ -88,6 +108,83 @@ document.querySelectorAll('.modal-overlay').forEach(m => {
     m.addEventListener('click', e => { if (e.target === m) closeModal(m.id); });
 });
 
+// ────────────────────────────────────────────────────────────────────
+//  SETTINGS TAB (ADMIN)
+// ────────────────────────────────────────────────────────────────────
+function renderAdminSettings() {
+    const profileRaw = localStorage.getItem('adminProfile');
+    const profile = profileRaw ? JSON.parse(profileRaw) : { name: 'Admin', photoURL: null };
+    
+    document.getElementById('admin-name-input').value = profile.name;
+    document.getElementById('admin-pass-input').value = '';
+    
+    const settingsAvatar = document.getElementById('settings-admin-avatar');
+    if (profile.photoURL) {
+        settingsAvatar.innerHTML = `<img src="${profile.photoURL}" alt="${profile.name}" style="width:100%;height:100%;object-fit:cover;border-radius:16px;">`;
+    } else {
+        settingsAvatar.innerHTML = profile.name.charAt(0).toUpperCase();
+    }
+}
+
+async function submitAdminSettings(e) {
+    e.preventDefault();
+    const btn = document.getElementById('btn-save-admin-settings');
+    btn.disabled = true;
+    btn.innerHTML = '<div class="fb-spinner" style="width:16px;height:16px;border-width:2px;display:inline-block;vertical-align:middle;margin-right:6px;"></div> Menyimpan...';
+    
+    try {
+        const profileRaw = localStorage.getItem('adminProfile');
+        const profile = profileRaw ? JSON.parse(profileRaw) : { name: 'Admin', photoURL: null };
+        
+        profile.name = document.getElementById('admin-name-input').value.trim() || 'Admin';
+        
+        const newPass = document.getElementById('admin-pass-input').value;
+        if (newPass.length > 0) {
+            // Note: Currently ADMIN_PASSWORD is hardcoded in data.js.
+            // If they change it here, we should probably save it in localStorage 
+            // and override ADMIN_PASSWORD check in index.html, but for now we just show a toast.
+            showToast('Fitur ubah password lokal belum diimplementasikan sepenuhnya (masih hardcoded).', 'warning');
+        }
+        
+        const fileInput = document.getElementById('admin-photo-input');
+        if (fileInput.files && fileInput.files[0]) {
+            const file = fileInput.files[0];
+            if (file.size > 2 * 1024 * 1024) {
+                showToast('Ukuran foto terlalu besar. Maksimal 2MB.', 'error');
+                btn.disabled = false;
+                btn.innerHTML = '💾 Simpan Perubahan';
+                return;
+            }
+            if (typeof FireDB !== 'undefined' && await FireDB.isReady()) {
+                const url = await FireDB.uploadProfilePicture(file, 'admin');
+                if (url) {
+                    profile.photoURL = url;
+                } else {
+                    showToast('Gagal mengunggah foto profil.', 'error');
+                }
+            } else {
+                showToast('Firebase belum terhubung. Tidak dapat mengunggah foto.', 'warning');
+            }
+        }
+        
+        localStorage.setItem('adminProfile', JSON.stringify(profile));
+        initAdminProfile();
+        renderAdminSettings();
+        showToast('Pengaturan profil berhasil disimpan!', 'success');
+        
+    } catch (err) {
+        console.error(err);
+        showToast('Terjadi kesalahan saat menyimpan pengaturan.', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '💾 Simpan Perubahan';
+    }
+}
+
+// ────────────────────────────────────────────────────────────────────
+//  INITIALIZATION
+// ────────────────────────────────────────────────────────────────────
+async function initAdmin() {
 // ────────────────────────────────────────────────────────────────────
 //  OVERVIEW TAB
 // ────────────────────────────────────────────────────────────────────

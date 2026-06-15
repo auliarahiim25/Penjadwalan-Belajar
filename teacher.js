@@ -61,6 +61,34 @@ function switchPage(page) {
     if (page === 'dashboard')    renderDashboard();
     if (page === 'availability') renderAvailabilityList();
     if (page === 'myschedules')  renderMySchedules();
+    if (page === 'settings')     renderTeacherSettings();
+}
+
+function updateTeacherAvatarUI(teacherData) {
+    const headerAvatar = document.getElementById('header-avatar');
+    const dashAvatar = document.getElementById('dash-avatar');
+    
+    if (teacherData.photoURL) {
+        const imgHtml = `<img src="${teacherData.photoURL}" alt="${teacherData.name}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+        if (headerAvatar) {
+            headerAvatar.innerHTML = imgHtml;
+            headerAvatar.style.background = 'transparent';
+        }
+        if (dashAvatar) {
+            dashAvatar.innerHTML = imgHtml;
+            dashAvatar.style.background = 'transparent';
+        }
+    } else {
+        const initials = teacherData.name.split(' ').map(w => w[0]).join('').slice(0, 2);
+        if (headerAvatar) {
+            headerAvatar.innerHTML = initials;
+            headerAvatar.style.background = 'var(--ba-red)';
+        }
+        if (dashAvatar) {
+            dashAvatar.innerHTML = initials;
+            dashAvatar.style.background = 'rgba(255,255,255,0.15)';
+        }
+    }
 }
 
 // ────────────────────────────────────────────────────────────────────
@@ -87,9 +115,8 @@ async function init() {
     if (!teacher) { doLogout(); return; }
 
     // Header
-    const initials = teacher.name.split(' ').map(w => w[0]).join('').slice(0, 2);
-    document.getElementById('header-avatar').textContent = initials;
-    document.getElementById('header-name').textContent   = teacher.name;
+    updateTeacherAvatarUI(teacher);
+    document.getElementById('header-name').textContent = teacher.name;
 
     renderDashboard();
     updatePendingBadges();
@@ -108,8 +135,7 @@ function renderDashboard() {
 
 // Subjects tags
 function renderProfileCard() {
-    const initials = teacher.name.split(' ').map(w => w[0]).join('').slice(0, 2);
-    document.getElementById('dash-avatar').textContent = initials;
+    updateTeacherAvatarUI(teacher);
     document.getElementById('dash-name').textContent   = teacher.name;
 
     const subjContainer = document.getElementById('dash-subjects');
@@ -636,6 +662,84 @@ async function processGoogleCalendarSync(accessToken) {
     }
     if (failCount > 0) {
         showToast(`${failCount} jadwal gagal disinkronkan.`, 'error');
+    }
+}
+
+// ────────────────────────────────────────────────────────────────────
+//  SETTINGS TAB (TEACHER)
+// ────────────────────────────────────────────────────────────────────
+function renderTeacherSettings() {
+    document.getElementById('teacher-name-input').value = teacher.name || '';
+    document.getElementById('teacher-email-input').value = teacher.email && teacher.email !== '-' ? teacher.email : '';
+    document.getElementById('teacher-pin-input').value = '';
+    
+    const settingsAvatar = document.getElementById('settings-teacher-avatar');
+    if (teacher.photoURL) {
+        settingsAvatar.innerHTML = `<img src="${teacher.photoURL}" alt="${teacher.name}" style="width:100%;height:100%;object-fit:cover;border-radius:16px;">`;
+    } else {
+        settingsAvatar.innerHTML = teacher.name.split(' ').map(w => w[0]).join('').slice(0, 2);
+    }
+}
+
+async function submitTeacherSettings(e) {
+    e.preventDefault();
+    const btn = document.getElementById('btn-save-teacher-settings');
+    btn.disabled = true;
+    btn.innerHTML = '<div class="fb-spinner" style="width:16px;height:16px;border-width:2px;display:inline-block;vertical-align:middle;margin-right:6px;"></div> Menyimpan...';
+    
+    try {
+        const newName = document.getElementById('teacher-name-input').value.trim();
+        const newEmail = document.getElementById('teacher-email-input').value.trim();
+        const newPin = document.getElementById('teacher-pin-input').value;
+        
+        teacher.name = newName || teacher.name;
+        teacher.email = newEmail || '-';
+        if (newPin && newPin.length === 4) {
+            teacher.pin = newPin;
+        }
+        
+        const fileInput = document.getElementById('teacher-photo-input');
+        if (fileInput.files && fileInput.files[0]) {
+            const file = fileInput.files[0];
+            if (file.size > 2 * 1024 * 1024) {
+                showToast('Ukuran foto terlalu besar. Maksimal 2MB.', 'error');
+                btn.disabled = false;
+                btn.innerHTML = '💾 Simpan Perubahan';
+                return;
+            }
+            if (typeof FireDB !== 'undefined' && await FireDB.isReady()) {
+                const url = await FireDB.uploadProfilePicture(file, teacherId);
+                if (url) {
+                    teacher.photoURL = url;
+                } else {
+                    showToast('Gagal mengunggah foto profil.', 'error');
+                }
+            } else {
+                showToast('Firebase belum terhubung. Tidak dapat mengunggah foto.', 'warning');
+            }
+        }
+        
+        // Save to Firebase (or local)
+        if (typeof FireDB !== 'undefined' && await FireDB.isReady()) {
+            await FireDB.saveTeacher(teacher);
+        } else {
+            DB.saveTeacher(teacher);
+        }
+        
+        // Update UI
+        updateTeacherAvatarUI(teacher);
+        document.getElementById('header-name').textContent = teacher.name;
+        renderProfileCard(); // To update dash-name
+        renderTeacherSettings();
+        
+        showToast('Pengaturan profil berhasil disimpan!', 'success');
+        
+    } catch (err) {
+        console.error(err);
+        showToast('Terjadi kesalahan saat menyimpan pengaturan.', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '💾 Simpan Perubahan';
     }
 }
 

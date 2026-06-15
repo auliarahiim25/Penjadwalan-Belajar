@@ -101,23 +101,24 @@ const KET_LIST = [
 
 const RUANGAN_LIST = ["101", "102", "201", "202", "203"];
 
-// --- Weekly Class Schedule Templates (from spreadsheet) ---
-// Each template defines a rombel's recurring weekly slots.
-// 'days' = which days this pattern repeats, 'sessions' = time slots per meeting day.
-const CLASS_SCHEDULE_TEMPLATES = [
+// --- Default Templates ---
+const DEFAULT_TEMPLATES = [
     {
+        id: 'tmpl-mcsgr1',
         rombel: 'MC-SG R1',
         days: ['Senin', 'Rabu'],
         sessions: [{ start: '15:30', end: '17:00', label: '1 Sesi' }],
         room: '201'
     },
     {
+        id: 'tmpl-mcsgr2',
         rombel: 'MC-SG R2',
         days: ['Selasa', 'Kamis'],
         sessions: [{ start: '15:30', end: '17:00', label: '1 Sesi' }],
         room: '201'
     },
     {
+        id: 'tmpl-5sdr1',
         rombel: '5 SD R1',
         days: ['Selasa', 'Kamis'],
         sessions: [
@@ -127,6 +128,7 @@ const CLASS_SCHEDULE_TEMPLATES = [
         room: '102'
     },
     {
+        id: 'tmpl-6sdr1',
         rombel: '6 SD R1',
         days: ['Selasa', 'Kamis', 'Sabtu'],
         sessions: [
@@ -135,6 +137,7 @@ const CLASS_SCHEDULE_TEMPLATES = [
         room: '102'
     },
     {
+        id: 'tmpl-6sdr2',
         rombel: '6 SD R2',
         days: ['Senin', 'Rabu'],
         sessions: [
@@ -144,6 +147,7 @@ const CLASS_SCHEDULE_TEMPLATES = [
         room: '102'
     },
     {
+        id: 'tmpl-7smpr1',
         rombel: '7 SMP R1',
         days: ['Senin', 'Rabu'],
         sessions: [
@@ -153,6 +157,7 @@ const CLASS_SCHEDULE_TEMPLATES = [
         room: '202'
     },
     {
+        id: 'tmpl-8smpr1',
         rombel: '8 SMP R1',
         days: ['Senin', 'Jumat'],
         sessions: [
@@ -161,6 +166,7 @@ const CLASS_SCHEDULE_TEMPLATES = [
         room: '102'
     },
     {
+        id: 'tmpl-9smpr1',
         rombel: '9 SMP R1',
         days: ['Senin', 'Jumat'],
         sessions: [
@@ -169,6 +175,7 @@ const CLASS_SCHEDULE_TEMPLATES = [
         room: '203'
     },
     {
+        id: 'tmpl-10smar1',
         rombel: '10 SMA R1',
         days: ['Selasa', 'Kamis'],
         sessions: [
@@ -178,6 +185,7 @@ const CLASS_SCHEDULE_TEMPLATES = [
         room: '202'
     },
     {
+        id: 'tmpl-11smar1',
         rombel: '11 SMA R1',
         days: ['Rabu', 'Jumat'],
         sessions: [
@@ -187,6 +195,7 @@ const CLASS_SCHEDULE_TEMPLATES = [
         room: '101,202'
     },
     {
+        id: 'tmpl-12smar1',
         rombel: '12 SMA R1',
         days: ['Senin', 'Kamis'],
         sessions: [
@@ -196,6 +205,7 @@ const CLASS_SCHEDULE_TEMPLATES = [
         room: '101'
     },
     {
+        id: 'tmpl-12snbt',
         rombel: '12 SNBT',
         days: ['Rabu', 'Jumat'],
         sessions: [
@@ -208,173 +218,100 @@ const CLASS_SCHEDULE_TEMPLATES = [
 
 // --- Default Seed Data ---
 const DEFAULT_TEACHERS = [
+    // --- PINRANG BRANCH ---
     {
-        id: 'mt-astuti',
-        name: 'ASTUTI',
-        email: '-',
-        pin: '1234',
-        avatarBg: '#FFF3CD',
-        avatarColor: '#856404',
-        subjects: {
-            SD: [],
-            SMP: ['FISIKA', 'MATEMATIKA', 'MATEMATIKA LANJUT'],
-            SMA: ['FISIKA', 'MATEMATIKA', 'MATEMATIKA LANJUT'],
-            UTBK: ['PENGETAHUAN KUANTITATIF', 'PENALARAN MATEMATIKA', 'PENALARAN UMUM', 'DASAR-DASAR NUMERASI']
-        }
+        id: 'mt-astuti', branch: 'Pinrang', name: 'ASTUTI', email: '-', pin: '1234', avatarBg: '#FFF3CD', avatarColor: '#856404',
+        subjects: { SD: [], SMP: ['FISIKA', 'MATEMATIKA', 'MATEMATIKA LANJUT'], SMA: ['FISIKA', 'MATEMATIKA', 'MATEMATIKA LANJUT'], UTBK: ['PENGETAHUAN KUANTITATIF', 'PENALARAN MATEMATIKA', 'PENALARAN UMUM', 'DASAR-DASAR NUMERASI'] }
     },
     {
-        id: 'mt-hanifah',
-        name: 'HANIFAH SARAH',
-        email: '-',
-        pin: '1234',
-        avatarBg: '#F8D7DA',
-        avatarColor: '#842029',
-        subjects: {
-            SD: ['MATEMATIKA', 'IPA'],
-            SMP: ['MATEMATIKA', 'EKONOMI', 'BAHASA INGGRIS', 'MATEMATIKA LANJUT'],
-            SMA: ['MATEMATIKA', 'EKONOMI', 'BAHASA INGGRIS', 'MATEMATIKA LANJUT'],
-            UTBK: ['DASAR-DASAR NUMERASI', 'DASAR-DASAR LINGUSTIK']
-        }
+        id: 'mt-hanifah', branch: 'Pinrang', name: 'HANIFAH SARAH', email: '-', pin: '1234', avatarBg: '#F8D7DA', avatarColor: '#842029',
+        subjects: { SD: ['MATEMATIKA', 'IPA'], SMP: ['MATEMATIKA', 'EKONOMI', 'BAHASA INGGRIS', 'MATEMATIKA LANJUT'], SMA: ['MATEMATIKA', 'EKONOMI', 'BAHASA INGGRIS', 'MATEMATIKA LANJUT'], UTBK: ['DASAR-DASAR NUMERASI', 'DASAR-DASAR LINGUSTIK'] }
     },
     {
-        id: 'mt-khairunnisa',
-        name: 'KHAIRUNNISA ADAM',
-        email: '-',
-        pin: '1234',
-        avatarBg: '#D1ECF1',
-        avatarColor: '#0c5460',
-        subjects: {
-            SD: ['IPA'],
-            SMP: ['FISIKA', 'MATEMATIKA', 'IPA'],
-            SMA: ['FISIKA', 'MATEMATIKA'],
-            UTBK: ['PENALARAN MATEMATIKA', 'PENALARAN UMUM']
-        }
+        id: 'mt-khairunnisa', branch: 'Pinrang', name: 'KHAIRUNNISA ADAM', email: '-', pin: '1234', avatarBg: '#D1ECF1', avatarColor: '#0c5460',
+        subjects: { SD: ['IPA'], SMP: ['FISIKA', 'MATEMATIKA', 'IPA'], SMA: ['FISIKA', 'MATEMATIKA'], UTBK: ['PENALARAN MATEMATIKA', 'PENALARAN UMUM'] }
     },
     {
-        id: 'mt-haedir',
-        name: 'HAEDIR YUNUS',
-        email: '-',
-        pin: '1234',
-        avatarBg: '#D4EDDA',
-        avatarColor: '#155724',
-        subjects: {
-            SD: [],
-            SMP: ['BAHASA INGGRIS', 'BIOLOGI', 'KIMIA'],
-            SMA: ['BAHASA INGGRIS', 'BIOLOGI', 'KIMIA'],
-            UTBK: ['LITERASI BAHASA INGGRIS', 'LITERASI BAHASA INDONESIA']
-        }
+        id: 'mt-haedir', branch: 'Pinrang', name: 'HAEDIR YUNUS', email: '-', pin: '1234', avatarBg: '#D4EDDA', avatarColor: '#155724',
+        subjects: { SD: [], SMP: ['BAHASA INGGRIS', 'BIOLOGI', 'KIMIA'], SMA: ['BAHASA INGGRIS', 'BIOLOGI', 'KIMIA'], UTBK: ['LITERASI BAHASA INGGRIS', 'LITERASI BAHASA INDONESIA'] }
     },
     {
-        id: 'mt-sriyani',
-        name: 'SRIYANI',
-        email: '-',
-        pin: '1234',
-        avatarBg: '#E8D5F5',
-        avatarColor: '#5b21b6',
-        subjects: {
-            SD: [],
-            SMP: ['MATEMATIKA', 'IPA TERPADU', 'IPS TERPADU', 'MATEMATIKA LANJUT'],
-            SMA: ['MATEMATIKA', 'MATEMATIKA LANJUT'],
-            UTBK: ['PENGETAHUAN KUANTITATIF', 'PENALARAN MATEMATIKA', 'PENALARAN UMUM', 'DASAR-DASAR NUMERASI']
-        }
+        id: 'mt-sriyani', branch: 'Pinrang', name: 'SRIYANI', email: '-', pin: '1234', avatarBg: '#E8D5F5', avatarColor: '#5b21b6',
+        subjects: { SD: [], SMP: ['MATEMATIKA', 'IPA TERPADU', 'IPS TERPADU', 'MATEMATIKA LANJUT'], SMA: ['MATEMATIKA', 'MATEMATIKA LANJUT'], UTBK: ['PENGETAHUAN KUANTITATIF', 'PENALARAN MATEMATIKA', 'PENALARAN UMUM', 'DASAR-DASAR NUMERASI'] }
     },
     {
-        id: 'mt-putri',
-        name: 'PUTRI WULANDARI',
-        email: '-',
-        pin: '1234',
-        avatarBg: '#D4EDDA',
-        avatarColor: '#155724',
-        subjects: {
-            SD: ['BAHASA INDONESIA'],
-            SMP: ['BAHASA INDONESIA'],
-            SMA: ['BAHASA INDONESIA'],
-            UTBK: ['LITERASI BAHASA INDONESIA', 'PPU', 'PBM', 'DASAR-DASAR LINGUSTIK']
-        }
+        id: 'mt-putri-p', branch: 'Pinrang', name: 'PUTRI WULANDARI', email: '-', pin: '1234', avatarBg: '#D4EDDA', avatarColor: '#155724',
+        subjects: { SD: ['BAHASA INDONESIA'], SMP: ['BAHASA INDONESIA'], SMA: ['BAHASA INDONESIA'], UTBK: ['LITERASI BAHASA INDONESIA', 'PPU', 'PBM', 'DASAR-DASAR LINGUSTIK'] }
     },
     {
-        id: 'mt-arfandi',
-        name: 'MUH. KHAIRUL ARFANDI',
-        email: '-',
-        pin: '1234',
-        avatarBg: '#F8D7DA',
-        avatarColor: '#842029',
-        subjects: {
-            SD: [],
-            SMP: ['MATEMATIKA', 'MATEMATIKA LANJUT'],
-            SMA: ['MATEMATIKA', 'MATEMATIKA LANJUT'],
-            UTBK: ['PENGETAHUAN KUANTITATIF', 'PENALARAN MATEMATIKA', 'PENALARAN UMUM', 'DASAR-DASAR NUMERASI']
-        }
+        id: 'mt-arfandi', branch: 'Pinrang', name: 'MUH. KHAIRUL ARFANDI', email: '-', pin: '1234', avatarBg: '#F8D7DA', avatarColor: '#842029',
+        subjects: { SD: [], SMP: ['MATEMATIKA', 'MATEMATIKA LANJUT'], SMA: ['MATEMATIKA', 'MATEMATIKA LANJUT'], UTBK: ['PENGETAHUAN KUANTITATIF', 'PENALARAN MATEMATIKA', 'PENALARAN UMUM', 'DASAR-DASAR NUMERASI'] }
     },
     {
-        id: 'mt-muthia',
-        name: 'MUTIA TAUFIQ',
-        email: '-',
-        pin: '1234',
-        avatarBg: '#FDECEA',
-        avatarColor: '#c62828',
-        subjects: {
-            SD: [],
-            SMP: ['BAHASA INGGRIS', 'SEJARAH', 'GEOGRAFI', 'EKONOMI', 'SOSIOLOGI'],
-            SMA: ['BAHASA INGGRIS', 'SEJARAH', 'GEOGRAFI', 'EKONOMI', 'SOSIOLOGI'],
-            UTBK: ['LITERASI BAHASA INGGRIS']
-        }
+        id: 'mt-muthia', branch: 'Pinrang', name: 'MUTIA TAUFIQ', email: '-', pin: '1234', avatarBg: '#FDECEA', avatarColor: '#c62828',
+        subjects: { SD: [], SMP: ['BAHASA INGGRIS', 'SEJARAH', 'GEOGRAFI', 'EKONOMI', 'SOSIOLOGI'], SMA: ['BAHASA INGGRIS', 'SEJARAH', 'GEOGRAFI', 'EKONOMI', 'SOSIOLOGI'], UTBK: ['LITERASI BAHASA INGGRIS'] }
     },
     {
-        id: 'mt-maryam',
-        name: 'SITI MARYAM',
-        email: '-',
-        pin: '1234',
-        avatarBg: '#FFF3CD',
-        avatarColor: '#856404',
-        subjects: {
-            SD: [],
-            SMP: ['MATEMATIKA', 'BAHASA INDONESIA', 'IPA TERPADU', 'IPS TERPADU', 'EKONOMI', 'PKN', 'MATEMATIKA LANJUT'],
-            SMA: ['MATEMATIKA', 'BAHASA INDONESIA', 'EKONOMI', 'PKN', 'MATEMATIKA LANJUT'],
-            UTBK: []
-        }
+        id: 'mt-maryam', branch: 'Pinrang', name: 'SITI MARYAM', email: '-', pin: '1234', avatarBg: '#FFF3CD', avatarColor: '#856404',
+        subjects: { SD: [], SMP: ['MATEMATIKA', 'BAHASA INDONESIA', 'IPA TERPADU', 'IPS TERPADU', 'EKONOMI', 'PKN', 'MATEMATIKA LANJUT'], SMA: ['MATEMATIKA', 'BAHASA INDONESIA', 'EKONOMI', 'PKN', 'MATEMATIKA LANJUT'], UTBK: [] }
     },
     {
-        id: 'mt-ahmad',
-        name: 'AHMAD KHAIDIR',
-        email: '-',
-        pin: '1234',
-        avatarBg: '#D1ECF1',
-        avatarColor: '#0c5460',
-        subjects: {
-            SD: [],
-            SMP: ['PKN', 'SEJARAH', 'SOSIOLOGI', 'GEOGRAFI'],
-            SMA: ['PKN', 'SEJARAH', 'SOSIOLOGI', 'GEOGRAFI'],
-            UTBK: []
-        }
+        id: 'mt-ahmad', branch: 'Pinrang', name: 'AHMAD KHAIDIR', email: '-', pin: '1234', avatarBg: '#D1ECF1', avatarColor: '#0c5460',
+        subjects: { SD: [], SMP: ['PKN', 'SEJARAH', 'SOSIOLOGI', 'GEOGRAFI'], SMA: ['PKN', 'SEJARAH', 'SOSIOLOGI', 'GEOGRAFI'], UTBK: [] }
     },
     {
-        id: 'mt-intan',
-        name: 'NURUL INTAN',
-        email: '-',
-        pin: '1234',
-        avatarBg: '#E3F2FD',
-        avatarColor: '#1565c0',
-        subjects: {
-            SD: ['IPA'],
-            SMP: ['BIOLOGI', 'KIMIA', 'IPA TERPADU', 'IPS TERPADU', 'MATEMATIKA'],
-            SMA: ['BIOLOGI', 'KIMIA', 'MATEMATIKA'],
-            UTBK: []
-        }
+        id: 'mt-intan', branch: 'Pinrang', name: 'NURUL INTAN', email: '-', pin: '1234', avatarBg: '#E3F2FD', avatarColor: '#1565c0',
+        subjects: { SD: ['IPA'], SMP: ['BIOLOGI', 'KIMIA', 'IPA TERPADU', 'IPS TERPADU', 'MATEMATIKA'], SMA: ['BIOLOGI', 'KIMIA', 'MATEMATIKA'], UTBK: [] }
     },
     {
-        id: 'mt-hikma',
-        name: 'HIKMA PRISKA',
-        email: '-',
-        pin: '1234',
-        avatarBg: '#E8D5F5',
-        avatarColor: '#5b21b6',
-        subjects: {
-            SD: [],
-            SMP: ['KIMIA', 'MATEMATIKA', 'IPA TERPADU', 'IPS TERPADU'],
-            SMA: ['KIMIA', 'MATEMATIKA'],
-            UTBK: []
-        }
+        id: 'mt-hikma', branch: 'Pinrang', name: 'HIKMA PRISKA', email: '-', pin: '1234', avatarBg: '#E8D5F5', avatarColor: '#5b21b6',
+        subjects: { SD: [], SMP: ['KIMIA', 'MATEMATIKA', 'IPA TERPADU', 'IPS TERPADU'], SMA: ['KIMIA', 'MATEMATIKA'], UTBK: [] }
+    },
+
+    // --- PAREPARE BRANCH ---
+    {
+        id: 'mt-annisa-p', branch: 'Parepare', name: 'ANNISAA HANIFAH', email: '-', pin: '1234', avatarBg: '#FFE0E0', avatarColor: '#c62828',
+        subjects: { SD: ['IPA TERPADU', 'IPS TERPADU', 'BAHASA INDONESIA', 'BAHASA INGGRIS'], SMP: ['BIOLOGI', 'BAHASA INDONESIA', 'BAHASA INGGRIS', 'KIMIA'], SMA: ['KIMIA', 'BIOLOGI', 'BAHASA INGGRIS', 'BAHASA INDONESIA'], UTBK: ['PPU', 'PU', 'PBM', 'LBI', 'LBE'] }
+    },
+    {
+        id: 'mt-riswan-p', branch: 'Parepare', name: 'RISWAN', email: '-', pin: '1234', avatarBg: '#E3F2FD', avatarColor: '#1565c0',
+        subjects: { SD: [], SMP: ['MATEMATIKA', 'FISIKA'], SMA: ['MATEMATIKA', 'FISIKA'], UTBK: ['PENGETAHUAN KUANTITATIF', 'PENALARAN MATEMATIKA', 'PENALARAN UMUM'] }
+    },
+    {
+        id: 'mt-rayhana-p', branch: 'Parepare', name: 'RAYHANA', email: '-', pin: '1234', avatarBg: '#E8D5F5', avatarColor: '#5b21b6',
+        subjects: { SD: ['MATEMATIKA', 'IPA'], SMP: ['FISIKA'], SMA: ['FISIKA'], UTBK: [] }
+    },
+    {
+        id: 'mt-sulvirah-p', branch: 'Parepare', name: 'SULVIRAH RAHMI', email: '-', pin: '1234', avatarBg: '#FFF3CD', avatarColor: '#856404',
+        subjects: { SD: ['MATEMATIKA'], SMP: ['MATEMATIKA'], SMA: ['MATEMATIKA'], UTBK: ['PENGETAHUAN KUANTITATIF', 'PENALARAN MATEMATIKA', 'PENALARAN UMUM'] }
+    },
+    {
+        id: 'mt-nurgafilah-p', branch: 'Parepare', name: 'NURGAFILAH', email: '-', pin: '1234', avatarBg: '#D4EDDA', avatarColor: '#155724',
+        subjects: { SD: ['BAHASA INDONESIA', 'BIOLOGI', 'FISIKA', 'PKN', 'MATEMATIKA'], SMP: ['BAHASA INDONESIA', 'BIOLOGI'], SMA: ['BAHASA INDONESIA', 'BIOLOGI'], UTBK: ['LITERASI BAHASA INDONESIA'] }
+    },
+    {
+        id: 'mt-putri-parepare', branch: 'Parepare', name: 'PUTRI INDAH', email: '-', pin: '1234', avatarBg: '#FDECEA', avatarColor: '#c62828',
+        subjects: { SD: ['BAHASA INDONESIA'], SMP: ['BAHASA INDONESIA'], SMA: ['BAHASA INDONESIA'], UTBK: ['PBM', 'LBI', 'PPU'] }
+    },
+    {
+        id: 'mt-fitrah-p', branch: 'Parepare', name: 'FITRAH AMALIA', email: '-', pin: '1234', avatarBg: '#D1ECF1', avatarColor: '#0c5460',
+        subjects: { SD: ['BAHASA INGGRIS'], SMP: ['BAHASA INGGRIS'], SMA: ['BIOLOGI', 'BAHASA INGGRIS'], UTBK: ['LITERASI BAHASA INGGRIS'] }
+    },
+    {
+        id: 'mt-nubi-p', branch: 'Parepare', name: 'NURUL MUTMAINNAH (NUBI)', email: '-', pin: '1234', avatarBg: '#F8D7DA', avatarColor: '#842029',
+        subjects: { SD: ['MATEMATIKA'], SMP: ['MATEMATIKA'], SMA: ['MATEMATIKA'], UTBK: ['PENGETAHUAN KUANTITATIF', 'PENALARAN MATEMATIKA', 'PENALARAN UMUM'] }
+    },
+    {
+        id: 'mt-dirgahayu-p', branch: 'Parepare', name: 'DIRGAHAYU', email: '-', pin: '1234', avatarBg: '#FFE0E0', avatarColor: '#c62828',
+        subjects: { SD: [], SMP: ['BAHASA INGGRIS'], SMA: ['BAHASA INGGRIS'], UTBK: ['LITERASI BAHASA INGGRIS'] }
+    },
+    {
+        id: 'mt-debima-p', branch: 'Parepare', name: 'DEBIMA SOLLI RURUK TIPA', email: '-', pin: '1234', avatarBg: '#E3F2FD', avatarColor: '#1565c0',
+        subjects: { SD: ['MATEMATIKA'], SMP: ['MATEMATIKA'], SMA: ['MATEMATIKA'], UTBK: ['PENGETAHUAN KUANTITATIF', 'PENALARAN MATEMATIKA', 'PENALARAN UMUM'] }
+    },
+    {
+        id: 'mt-dian-p', branch: 'Parepare', name: 'DIAN MUKKARAMAH', email: '-', pin: '1234', avatarBg: '#FFF3CD', avatarColor: '#856404',
+        subjects: { SD: [], SMP: [], SMA: [], UTBK: [] }
     }
 ];
 
@@ -405,7 +342,8 @@ const DB = {
         const fresh = {
             teachers: DEFAULT_TEACHERS,
             availability: DEFAULT_AVAILABILITY,
-            schedules: DEFAULT_SCHEDULES
+            schedules: DEFAULT_SCHEDULES,
+            templates: DEFAULT_TEMPLATES
         };
         this.save(fresh);
         return fresh;
@@ -496,6 +434,36 @@ const DB = {
     deleteSchedule(id) {
         const db = this.get();
         db.schedules = db.schedules.filter(s => s.id !== id);
+        this.flush();
+    },
+
+    // Templates
+    getTemplates() { 
+        const db = this.get();
+        if (!db.templates) {
+            db.templates = DEFAULT_TEMPLATES;
+            this.flush();
+        }
+        return db.templates; 
+    },
+    saveTemplate(tmpl) {
+        const db = this.get();
+        if (!db.templates) db.templates = DEFAULT_TEMPLATES;
+        
+        if (!tmpl.id) {
+            tmpl.id = 'tmpl-' + Date.now();
+            db.templates.push(tmpl);
+        } else {
+            const idx = db.templates.findIndex(t => t.id === tmpl.id);
+            if (idx !== -1) db.templates[idx] = tmpl;
+            else db.templates.push(tmpl);
+        }
+        this.flush();
+    },
+    deleteTemplate(id) {
+        const db = this.get();
+        if (!db.templates) db.templates = DEFAULT_TEMPLATES;
+        db.templates = db.templates.filter(t => t.id !== id);
         this.flush();
     }
 };

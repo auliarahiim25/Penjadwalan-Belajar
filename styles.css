@@ -1365,22 +1365,19 @@ tbody tr:hover { background: rgba(0, 0, 0, 0.01); }
     min-width: 1100px;
 }
 
-.timetable-table thead {
-    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
-}
-
-.timetable-table th {
-    color: #fff;
-    font-weight: 700;
+.timetable-table thead th {
+    background: var(--bg-sidebar);
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    font-weight: 800;
     text-transform: uppercase;
-    letter-spacing: .04em;
+    letter-spacing: .06em;
     font-size: .72rem;
     padding: .75rem .6rem;
     text-align: center;
     white-space: nowrap;
-    border-right: 1px solid rgba(255,255,255,.12);
 }
-.timetable-table th:last-child { border-right: none; }
+.timetable-table th:last-child { border-right: 1px solid var(--border-color); }
 
 .tt-th-rombel { min-width: 110px; text-align: left !important; padding-left: 1rem !important; }
 .tt-th-schedule { min-width: 130px; }
@@ -1437,25 +1434,26 @@ tbody tr:hover { background: rgba(0, 0, 0, 0.01); }
     gap: 2px;
     padding: .3rem .55rem;
     border-radius: 8px;
-    font-size: .7rem;
-    font-weight: 600;
+    font-size: .75rem;
+    font-weight: 700;
     cursor: pointer;
     transition: all .2s;
     width: 100%;
-    border: 1.5px dashed var(--border-color);
-    background: #f0f9ff;
-    color: var(--info);
+    border: 1.5px dashed var(--ba-red);
+    background: #fff0f0;
+    color: var(--ba-red-dark);
 }
 .tt-slot-chip:hover {
-    background: var(--info-light);
-    border-color: var(--info);
+    background: var(--ba-red-light);
+    border-color: var(--ba-red);
     transform: scale(1.04);
-    box-shadow: 0 2px 8px rgba(59,130,246,.15);
+    box-shadow: 0 2px 8px rgba(227,30,36,.15);
 }
 .tt-slot-chip .tt-chip-label {
-    font-size: .62rem;
-    font-weight: 400;
-    opacity: .7;
+    font-size: .65rem;
+    font-weight: 700;
+    opacity: 1;
+    color: #475569;
 }
 
 /* Assigned slot */

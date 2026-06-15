@@ -46,7 +46,7 @@
         <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/71/Ruang_Guru_logo.svg/3840px-Ruang_Guru_logo.svg.png" alt="Ruangguru" style="height: 28px; object-fit: contain; margin-left: 4px;">
         <div class="logo-text-wrap">
             <div class="logo-name">Brain Academia</div>
-            <div class="logo-branch">Portal Master Teacher — Pinrang</div>
+            <div class="logo-branch" id="header-branch-label">Portal Master Teacher</div>
         </div>
     </div>
     <nav class="header-nav">
@@ -138,7 +138,7 @@
             <div class="page-header">
                 <div>
                     <div class="page-title">🗓️ Atur Ketersediaan Mengajar</div>
-                    <div class="page-subtitle">Daftar hari, waktu, dan mata pelajaran yang bersedia Anda ajarkan</div>
+                    <div class="page-subtitle">Daftar hari dan waktu yang bersedia Anda ajarkan</div>
                 </div>
                 <button class="btn btn-primary" onclick="openAddAvailModal()">
                     ➕ Tambah Ketersediaan
@@ -151,7 +151,6 @@
                         <thead>
                             <tr>
                                 <th>Tanggal / Hari</th>
-                                <th>Mata Pelajaran</th>
                                 <th>Waktu Mengajar</th>
                                 <th style="text-align: center; width: 120px;">Aksi</th>
                             </tr>
@@ -299,24 +298,13 @@
         <div class="modal-header">
             <div class="modal-icon" style="background:var(--success-light);color:var(--success);">🗓️</div>
             <div class="modal-title">Tambah Ketersediaan</div>
-            <div class="modal-subtitle">Tentukan waktu mengajar dan mata pelajaran Anda</div>
+            <div class="modal-subtitle">Tentukan waktu mengajar Anda</div>
         </div>
         <form id="form-avail" onsubmit="submitAvailabilityForm(event)">
             <div class="form-group">
                 <label class="form-label">Pilih Tanggal</label>
                 <input type="date" id="avail-date" class="form-control" required>
             </div>
-            
-            <div class="form-group">
-                <label class="form-label">Mata Pelajaran</label>
-                <select id="avail-subject-select" class="form-control" onchange="toggleCustomSubject()" required>
-                    <!-- Populated dynamically from teacher subjects -->
-                </select>
-                <div id="avail-custom-subject-wrapper" class="hidden mt-2">
-                    <input type="text" id="avail-custom-subject" class="form-control" placeholder="Tulis mata pelajaran kustom...">
-                </div>
-            </div>
-
             <div class="form-row">
                 <div class="form-group">
                     <label class="form-label">Jam Mulai</label>

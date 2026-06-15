@@ -9,6 +9,31 @@ let currentWeekStart = '2026-06-08';
 let currentSchedWeekStart = '2026-06-08';
 let currentTimetableWeekStart = '2026-06-08';
 let adminSchedulesView = 'list';
+let adminCurrentBranch = 'all';
+
+function changeAdminBranch(branch) {
+    adminCurrentBranch = branch;
+    const label = branch === 'all' ? 'Semua Cabang' : 'Cabang ' + branch;
+    const el = document.getElementById('header-branch-label');
+    if (el) el.textContent = 'Admin — ' + label;
+    renderAll();
+}
+
+function getFilteredTeachers() {
+    const all = DB.getTeachers();
+    if (adminCurrentBranch === 'all') return all;
+    return all.filter(t => t.branch === adminCurrentBranch);
+}
+
+function getFilteredSchedules() {
+    const teachers = getFilteredTeachers().map(t => t.id);
+    return DB.getSchedules().filter(s => teachers.includes(s.teacherId));
+}
+
+function getFilteredAvailability() {
+    const teachers = getFilteredTeachers().map(t => t.id);
+    return DB.getAllAvailability().filter(a => teachers.includes(a.teacherId));
+}
 
 function getSubjectBadgeClass(subject) {
     if (!subject) return 'level-custom';
@@ -181,10 +206,7 @@ async function submitAdminSettings(e) {
     }
 }
 
-// ────────────────────────────────────────────────────────────────────
-//  INITIALIZATION
-// ────────────────────────────────────────────────────────────────────
-async function initAdmin() {
+
 // ────────────────────────────────────────────────────────────────────
 //  OVERVIEW TAB
 // ────────────────────────────────────────────────────────────────────
@@ -207,12 +229,12 @@ function changeAdminWeek(offset) {
 }
 
 function renderStats() {
-    const teachers  = DB.getTeachers();
-    const schedules = DB.getSchedules();
+    const teachers  = getFilteredTeachers();
+    const schedules = getFilteredSchedules();
     const pending   = schedules.filter(s => s.status === 'pending').length;
     const approved  = schedules.filter(s => s.status === 'approved').length;
 
-    const totalAvail = DB.getAllAvailability().length;
+    const totalAvail = getFilteredAvailability().length;
 
     document.getElementById('admin-stats').innerHTML = `
         <div class="stat-card">
@@ -268,7 +290,7 @@ function buildSchedChip(s) {
 }
 
 function renderOverviewTable() {
-    const teachers = DB.getTeachers();
+    const teachers = getFilteredTeachers();
     const tbody    = document.getElementById('overview-tbody');
 
     if (!teachers.length) {
@@ -473,7 +495,7 @@ function quickAssignByTeacher(teacherId) {
 
 // Update pending badge
 function updatePendingBadge() {
-    const pending = DB.getSchedules().filter(s => s.status === 'pending').length;
+    const pending = getFilteredSchedules().filter(s => s.status === 'pending').length;
     const badge = document.getElementById('sb-pending-badge');
     if (pending > 0) {
         badge.textContent = pending;
@@ -497,7 +519,7 @@ function populateAssignTeacherSelect() {
     const sel = document.getElementById('assign-teacher');
     const cur = sel.value;
     sel.innerHTML = '<option value="">— Pilih MT —</option>';
-    DB.getTeachers().forEach(t => {
+    getFilteredTeachers().forEach(t => {
         const opt = document.createElement('option');
         opt.value = t.id;
         opt.textContent = t.name;
@@ -573,7 +595,7 @@ function updateAvailHint() {
 
     if (avails.length) {
         hint.className = 'alert alert-success';
-        const slotsStr = avails.map(a => `<b>${a.startTime}–${a.endTime}</b> (<span class="subject-tag ${getSubjectBadgeClass(a.subject)}" style="font-size:.7rem;padding:.1rem .4rem;">${a.subject}</span>)`).join(', ');
+        const slotsStr = avails.map(a => `<b>${a.startTime}–${a.endTime}</b>`).join(', ');
         hintText.innerHTML = `<b>${teacher.name}</b> tersedia <b>${dayName}, ${dateFormatted}</b>: ${slotsStr}`;
     } else {
         hint.className = 'alert alert-warning';
@@ -602,7 +624,7 @@ async function submitAssign(e) {
         return;
     }
 
-    const allSchedules = DB.getSchedules();
+    const allSchedules = getFilteredSchedules();
     const dayName = getDayNameFromDate(date);
     const conflicts = [];
 
@@ -688,7 +710,7 @@ function renderSchedulesList() {
     const filterDay     = document.getElementById('filter-sched-day')?.value     || '';
     const filterStatus  = document.getElementById('filter-sched-status')?.value  || '';
 
-    let list = DB.getSchedules();
+    let list = getFilteredSchedules();
     if (filterTeacher) list = list.filter(s => s.teacherId === filterTeacher);
     if (filterDay)     list = list.filter(s => getDayNameFromDate(s.date) === filterDay);
     if (filterStatus)  list = list.filter(s => s.status === filterStatus);
@@ -749,8 +771,8 @@ function renderWeeklyGridSchedulesAdmin() {
     const board = document.getElementById('admin-schedules-weekly-board');
     board.innerHTML = '';
 
-    const allSchedules = DB.getSchedules();
-    const allTeachers  = DB.getTeachers();
+    const allSchedules = getFilteredSchedules();
+    const allTeachers  = getFilteredTeachers();
 
     weekDates.forEach(dateStr => {
         const dayName      = getDayNameFromDate(dateStr);
@@ -811,7 +833,7 @@ function populateSchedulesFilter() {
     if (!sel) return;
     const cur = sel.value;
     sel.innerHTML = '<option value="">Semua MT</option>';
-    DB.getTeachers().forEach(t => {
+    getFilteredTeachers().forEach(t => {
         const opt = document.createElement('option');
         opt.value = t.id;
         opt.textContent = t.name;
@@ -832,7 +854,7 @@ async function deleteSchedule(id) {
 // ────────────────────────────────────────────────────────────────────
 function renderTeacherMgmt() {
     const grid = document.getElementById('teacher-mgmt-grid');
-    const teachers = DB.getTeachers();
+    const teachers = getFilteredTeachers();
 
     if (!teachers.length) {
         grid.innerHTML = `<div class="empty-state"><div class="empty-icon">👥</div>
@@ -981,11 +1003,11 @@ function renderTimetable() {
         roomFilter.value = curRoom;
     }
 
-    const allSchedules = DB.getSchedules();
-    const allTeachers  = DB.getTeachers();
+    const allSchedules = getFilteredSchedules();
+    const allTeachers  = getFilteredTeachers();
 
     // Filter templates by room
-    let templates = CLASS_SCHEDULE_TEMPLATES;
+    let templates = DB.getTemplates();
     if (curRoom) {
         templates = templates.filter(t => t.room.split(',').map(r=>r.trim()).includes(curRoom));
     }
@@ -1076,17 +1098,24 @@ function renderTimetable() {
                 }
             });
 
+            if (sIdx === 0) {
+                html += `<td rowspan="${totalRows}" style="text-align:center; vertical-align:middle;">
+                    <button class="btn btn-secondary btn-sm" style="margin-bottom:4px;width:100%;padding:4px;font-size:0.75rem;" onclick="openTemplateModal('${tmpl.id}')">✏️ Edit</button>
+                    <button class="btn btn-secondary btn-sm" style="width:100%;color:var(--ba-red);padding:4px;font-size:0.75rem;" onclick="deleteTemplate('${tmpl.id}')">🗑️ Hapus</button>
+                </td>`;
+            }
+
             html += '</tr>';
         });
 
         // Separator between rombels
         if (tmplIdx < templates.length - 1) {
-            html += '<tr class="tt-separator-row"><td colspan="10"></td></tr>';
+            html += '<tr class="tt-separator-row"><td colspan="11"></td></tr>';
         }
     });
 
     if (!templates.length) {
-        html = '<tr><td colspan="10" class="text-center text-muted" style="padding:2rem;">Tidak ada template jadwal untuk filter ini.</td></tr>';
+        html = '<tr><td colspan="11" class="text-center text-muted" style="padding:2rem;">Tidak ada template jadwal untuk filter ini.</td></tr>';
     }
 
     tbody.innerHTML = html;
@@ -1195,5 +1224,90 @@ async function pushToFirebase() {
     if (!confirm('Upload semua data lokal ke Firebase Firestore?\nData di Firestore akan ditimpa dengan data lokal saat ini.')) return;
     await FireDB.pushLocalToFirestore();
     showToast('Data berhasil diupload ke Firebase!', 'success');
+}
+
+// ==========================================
+// PETA JADWAL (TEMPLATE) CRUD
+// ==========================================
+
+function openTemplateModal(tmplId = null) {
+    const form = document.getElementById('form-template');
+    form.reset();
+    document.getElementById('tmpl-id').value = '';
+    document.getElementById('template-modal-title').textContent = 'Tambah Rombel Baru';
+
+    // Clear checkboxes
+    document.querySelectorAll('input[name="tmpl-days"]').forEach(cb => cb.checked = false);
+
+    if (tmplId) {
+        const tmpl = DB.getTemplates().find(t => t.id === tmplId);
+        if (tmpl) {
+            document.getElementById('template-modal-title').textContent = 'Edit Rombel';
+            document.getElementById('tmpl-id').value = tmpl.id;
+            document.getElementById('tmpl-rombel').value = tmpl.rombel;
+            document.getElementById('tmpl-sessions').value = tmpl.sessions.map(s => `${s.start}-${s.end}`).join(', ');
+            document.getElementById('tmpl-room').value = tmpl.room;
+            
+            tmpl.days.forEach(day => {
+                const cb = document.querySelector(`input[name="tmpl-days"][value="${day}"]`);
+                if (cb) cb.checked = true;
+            });
+        }
+    }
+    openModal('modal-template');
+}
+
+function submitTemplate(e) {
+    e.preventDefault();
+    
+    const id = document.getElementById('tmpl-id').value;
+    const rombel = document.getElementById('tmpl-rombel').value.trim();
+    const room = document.getElementById('tmpl-room').value.trim();
+    
+    const daysNodes = document.querySelectorAll('input[name="tmpl-days"]:checked');
+    const days = Array.from(daysNodes).map(cb => cb.value);
+    
+    if (days.length === 0) {
+        showToast('Pilih minimal 1 hari', 'error');
+        return;
+    }
+    
+    const sessionsStr = document.getElementById('tmpl-sessions').value.trim();
+    const sessionsArr = sessionsStr.split(',').map(s => s.trim()).filter(s => s);
+    const sessions = [];
+    
+    for (let i = 0; i < sessionsArr.length; i++) {
+        const parts = sessionsArr[i].split('-');
+        if (parts.length !== 2) {
+            showToast('Format sesi tidak valid. Gunakan HH:MM-HH:MM', 'error');
+            return;
+        }
+        sessions.push({
+            start: parts[0].trim(),
+            end: parts[1].trim(),
+            label: `Sesi ${i+1}`
+        });
+    }
+    
+    const tmpl = {
+        id: id || undefined,
+        rombel,
+        days,
+        sessions,
+        room
+    };
+    
+    DB.saveTemplate(tmpl);
+    closeModal('modal-template');
+    showToast('Peta jadwal berhasil disimpan', 'success');
+    renderTimetable();
+}
+
+function deleteTemplate(id) {
+    if (confirm('Yakin ingin menghapus rombel ini dari peta jadwal?')) {
+        DB.deleteTemplate(id);
+        showToast('Rombel berhasil dihapus', 'success');
+        renderTimetable();
+    }
 }
 

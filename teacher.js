@@ -117,6 +117,11 @@ async function init() {
     // Header
     updateTeacherAvatarUI(teacher);
     document.getElementById('header-name').textContent = teacher.name;
+    
+    const branchLabel = document.getElementById('header-branch-label');
+    if (branchLabel) {
+        branchLabel.textContent = `Portal Master Teacher — Cabang ${teacher.branch || 'Pinrang'}`;
+    }
 
     renderDashboard();
     updatePendingBadges();
@@ -257,13 +262,13 @@ function renderAvailabilityList() {
         const dayName = getDayNameFromDate(item.date);
         const formattedDate = formatDateIndo(item.date);
         return `
-        <tr>
-            <td class="td-bold">
-                <div>${dayName}</div>
-                <div class="text-muted" style="font-size:0.75rem; font-weight:normal; margin-top:2px;">${formattedDate}</div>
+        <tr class="${statusClass}">
+            <td>
+                <div style="font-weight:700;color:var(--text-primary);">${dayName}</div>
+                <div style="font-size:.75rem;color:var(--text-secondary);">${formatDateIndo(item.date)}</div>
             </td>
-            <td><span class="subject-tag ${getSubjectBadgeClass(item.subject)}">${item.subject}</span></td>
-            <td>🕒 <b>${item.startTime} – ${item.endTime}</b></td>
+            <td>
+                <div style="font-weight:800;color:var(--ba-red);">${item.startTime} - ${item.endTime}</div></td>
             <td style="text-align: center;">
                 <button class="btn btn-outline btn-sm" style="color:var(--danger); border-color:var(--danger-light);" onclick="deleteAvailability('${item.id}')">
                     🗑️ Hapus
@@ -274,25 +279,6 @@ function renderAvailabilityList() {
 }
 
 function openAddAvailModal() {
-    const sel = document.getElementById('avail-subject-select');
-    sel.innerHTML = '<option value="">— Pilih Mata Pelajaran —</option>';
-    
-    Object.entries(teacher.subjects).forEach(([level, subjs]) => {
-        if (subjs && subjs.length) {
-            subjs.forEach(s => {
-                const opt = document.createElement('option');
-                opt.value = `${level}: ${s}`;
-                opt.textContent = `${level}: ${s}`;
-                sel.appendChild(opt);
-            });
-        }
-    });
-
-    const optCustom = document.createElement('option');
-    optCustom.value = 'custom';
-    optCustom.textContent = 'Lainnya (Tulis Manual)';
-    sel.appendChild(optCustom);
-
     document.getElementById('form-avail').reset();
     
     // Set default value of date picker to today's date
@@ -302,41 +288,12 @@ function openAddAvailModal() {
     const dd = String(today.getDate()).padStart(2, '0');
     document.getElementById('avail-date').value = `${yyyy}-${mm}-${dd}`;
 
-    document.getElementById('avail-custom-subject-wrapper').classList.add('hidden');
-    document.getElementById('avail-custom-subject').required = false;
-
     openModal('modal-avail');
-}
-
-function toggleCustomSubject() {
-    const selectVal = document.getElementById('avail-subject-select').value;
-    const customWrapper = document.getElementById('avail-custom-subject-wrapper');
-    const customInput = document.getElementById('avail-custom-subject');
-
-    if (selectVal === 'custom') {
-        customWrapper.classList.remove('hidden');
-        customInput.required = true;
-        customInput.focus();
-    } else {
-        customWrapper.classList.add('hidden');
-        customInput.required = false;
-    }
 }
 
 async function submitAvailabilityForm(e) {
     e.preventDefault();
     const date = document.getElementById('avail-date').value;
-    const selectVal = document.getElementById('avail-subject-select').value;
-    let subject = selectVal;
-    
-    if (selectVal === 'custom') {
-        subject = document.getElementById('avail-custom-subject').value.trim();
-        if (!subject) {
-            showToast('Harap tulis mata pelajaran kustom.', 'warning');
-            return;
-        }
-    }
-
     const startTime = document.getElementById('avail-start').value;
     const endTime = document.getElementById('avail-end').value;
 
@@ -345,7 +302,7 @@ async function submitAvailabilityForm(e) {
         return;
     }
 
-    await FireDB.addAvailability(teacherId, { date, subject, startTime, endTime });
+    await FireDB.addAvailability(teacherId, { date, subject: '', startTime, endTime });
     closeModal('modal-avail');
     showToast('Ketersediaan berhasil disimpan!', 'success');
     renderAvailabilityList();

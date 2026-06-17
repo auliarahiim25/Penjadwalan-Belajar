@@ -1,7 +1,10 @@
-# Firebase config (jangan di-commit, berisi API key)
-firebase-config.js
+# Environment variables (rahasia, jangan di-commit)
 .env
 .env.local
+
+# CATATAN: firebase-config.js HARUS ikut di-commit dan di-deploy
+# karena ini adalah client-side config yang memang dirancang untuk publik.
+# Keamanan data diatur lewat Firebase Security Rules, bukan menyembunyikan API key.
 
 # OS files
 .DS_Store

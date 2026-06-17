@@ -247,7 +247,7 @@ function submitAdminLogin(e) {
     }
 }
 
-function submitTeacherLogin(e) {
+async function submitTeacherLogin(e) {
     e.preventDefault();
     const teacherId = document.getElementById('teacher-select').value;
     if (!teacherId) { showToast('Pilih nama Anda terlebih dahulu.', 'warning'); return; }
@@ -255,7 +255,14 @@ function submitTeacherLogin(e) {
     const pin = [0,1,2,3].map(i => document.getElementById('pin-'+i).value).join('');
     if (pin.length < 4) { showToast('Masukkan 4 digit PIN.', 'warning'); return; }
 
-    const teacher = DB.getTeacher(teacherId);
+    // Use FireDB (cloud) if available, else fall back to local DB
+    let teacher;
+    if (typeof FireDB !== 'undefined' && await FireDB.isReady()) {
+        teacher = await FireDB.getTeacher(teacherId);
+    } else {
+        teacher = DB.getTeacher(teacherId);
+    }
+
     if (teacher && teacher.pin === pin) {
         Session.save('teacher', teacherId);
         showToast(`Selamat datang, ${teacher.name}!`, 'success');

@@ -51,7 +51,7 @@
     </div>
     <nav class="header-nav">
         <span class="nav-link active" onclick="switchPage('dashboard')">🏠 Dashboard</span>
-        <span class="nav-link" onclick="switchPage('availability')">🗓️ Ketersediaan</span>
+        <span class="nav-link" onclick="switchPage('availability')">🗓️ Weekly Availability</span>
         <span class="nav-link" onclick="switchPage('myschedules')">
             📋 Jadwal Saya
             <span id="header-pending-badge" class="notif-badge hidden">0</span>
@@ -79,7 +79,7 @@
             <span class="s-icon">🏠</span> Dashboard
         </div>
         <div class="sidebar-link" id="sb-availability" onclick="switchPage('availability')">
-            <span class="s-icon">🗓️</span> Atur Ketersediaan
+            <span class="s-icon">🗓️</span> Weekly Availability
         </div>
         <div class="sidebar-link" id="sb-myschedules" onclick="switchPage('myschedules')">
             <span class="s-icon">📋</span> Jadwal Saya
@@ -135,31 +135,46 @@
 
         <!-- ═══ PAGE: AVAILABILITY ═══ -->
         <div id="page-availability" class="tab-pane">
-            <div class="page-header">
+            <div class="page-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
                 <div>
-                    <div class="page-title">🗓️ Atur Ketersediaan Mengajar</div>
-                    <div class="page-subtitle">Daftar hari dan waktu yang bersedia Anda ajarkan</div>
+                    <div class="page-title" style="color:var(--ba-red);">Weekly Availability Submission</div>
+                    <div class="page-subtitle">Click or drag across slots to mark your weekly availability</div>
                 </div>
-                <button class="btn btn-primary" onclick="openAddAvailModal()">
-                    ➕ Tambah Ketersediaan
-                </button>
+                <div>
+                    <button class="btn btn-primary" id="btn-save-avail" onclick="saveWeeklyAvailability()">
+                        💾 Save Changes
+                    </button>
+                </div>
             </div>
 
-            <div class="card" style="padding:0;overflow:hidden;">
-                <div class="table-wrapper" style="border:none;border-radius:0;">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Tanggal / Hari</th>
-                                <th>Waktu Mengajar</th>
-                                <th style="text-align: center; width: 120px;">Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody id="avail-list-tbody">
-                            <!-- Dynamically populated -->
-                        </tbody>
-                    </table>
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; margin-bottom: 1.25rem;">
+                <!-- Week Nav -->
+                <div class="week-nav-container" style="gap:.5rem;">
+                    <button class="btn btn-outline btn-sm" onclick="changeAvailWeek(-1)">&lt;</button>
+                    <span class="week-nav-title" id="avail-week-label" style="min-width:140px; text-align:center;">—</span>
+                    <button class="btn btn-outline btn-sm" onclick="changeAvailWeek(1)">&gt;</button>
+                    <button class="btn btn-secondary btn-sm" style="margin-left: 10px;" onclick="setAvailToThisWeek()">This Week</button>
+                    <button class="btn btn-secondary btn-sm" onclick="setAvailToNextWeek()">Next Week</button>
                 </div>
+
+                <!-- Actions -->
+                <div style="display:flex; gap:0.5rem;">
+                    <button class="btn btn-outline btn-sm" onclick="copyLastWeekAvail()">Copy Last Week</button>
+                    <button class="btn btn-outline btn-sm" onclick="copyCurrentWeekAvail()">Copy Current Week</button>
+                    <button class="btn btn-outline btn-sm" id="btn-paste-avail" onclick="pasteAvail()" disabled>Paste</button>
+                    <button class="btn btn-outline btn-sm" style="color:var(--ba-red); border-color:var(--ba-red-light);" onclick="resetThisWeekAvail()">Reset This Week</button>
+                </div>
+            </div>
+
+            <!-- Notes -->
+            <div style="margin-bottom: 1.25rem;">
+                <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); display:block; margin-bottom: 0.5rem;">📝 Notes / Reason for Availability This Week <span style="font-weight:normal; opacity:0.7;">— Notes are specific and saved per week</span></label>
+                <textarea class="form-control" id="avail-notes-input" rows="2" placeholder="Enter special notes or availability reasons for this week (e.g. training scheduled, available for extra sessions, etc)..." style="width: 100%;"></textarea>
+            </div>
+
+            <!-- Grid container -->
+            <div class="avail-grid-wrap" id="avail-grid-container">
+                <!-- Dynamically populated -->
             </div>
         </div>
 
@@ -282,7 +297,7 @@
     </div>
     <div class="bottom-nav-item" id="bn-availability" onclick="switchPage('availability')">
         <span class="bottom-nav-icon">🗓️</span>
-        <span>Ketersediaan</span>
+        <span>Availability</span>
     </div>
     <div class="bottom-nav-item" id="bn-myschedules" onclick="switchPage('myschedules')">
         <span class="bottom-nav-icon">📋</span>
@@ -291,38 +306,7 @@
     </div>
 </div>
 
-<!-- ══ MODAL: ADD AVAILABILITY ══ -->
-<div class="modal-overlay" id="modal-avail">
-    <div class="modal-box">
-        <button class="modal-close-btn" onclick="closeModal('modal-avail')">×</button>
-        <div class="modal-header">
-            <div class="modal-icon" style="background:var(--success-light);color:var(--success);">🗓️</div>
-            <div class="modal-title">Tambah Ketersediaan</div>
-            <div class="modal-subtitle">Tentukan waktu mengajar Anda</div>
-        </div>
-        <form id="form-avail" onsubmit="submitAvailabilityForm(event)">
-            <div class="form-group">
-                <label class="form-label">Pilih Tanggal</label>
-                <input type="date" id="avail-date" class="form-control" required>
-            </div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label class="form-label">Jam Mulai</label>
-                    <input type="time" id="avail-start" class="form-control" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Jam Selesai</label>
-                    <input type="time" id="avail-end" class="form-control" required>
-                </div>
-            </div>
-
-            <div style="display:flex;gap:.75rem;justify-content:flex-end;margin-top:1.5rem;">
-                <button type="button" class="btn btn-outline" onclick="closeModal('modal-avail')">Batal</button>
-                <button type="submit" class="btn btn-success">💾 Simpan Ketersediaan</button>
-            </div>
-        </form>
-    </div>
-</div>
+<!-- Removed old Add Availability Modal -->
 
 <script src="firebase-config.js"></script>
 <script src="data.js"></script>

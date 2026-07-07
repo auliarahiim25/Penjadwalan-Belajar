@@ -1549,10 +1549,76 @@ tbody tr:hover { background: rgba(0, 0, 0, 0.01); }
     to   { opacity: 1; transform: translateY(0); }
 }
 
-/* Separator row between rombel groups */
 .timetable-table .tt-separator-row td {
     padding: 0;
     height: 3px;
     background: var(--border-color);
     border: none;
+}
+
+/* ===================== WEEKLY AVAILABILITY GRID ===================== */
+.avail-grid-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    background: var(--bg-card);
+}
+.avail-grid {
+    display: grid;
+    grid-template-columns: 70px repeat(7, minmax(100px, 1fr));
+    min-width: 800px;
+}
+.avail-grid-header {
+    display: contents;
+}
+.avail-grid-header .grid-h-cell {
+    padding: 0.75rem 0.5rem;
+    text-align: center;
+    font-weight: 800;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border-color);
+    border-right: 1px solid var(--border-color);
+    background: var(--bg-sidebar);
+}
+.avail-grid-header .grid-h-cell:last-child {
+    border-right: none;
+}
+.avail-grid-row {
+    display: contents;
+}
+.avail-grid-time {
+    padding: 0.5rem 0;
+    text-align: center;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border-color);
+    border-right: 1px solid var(--border-color);
+    background: var(--bg-sidebar);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.avail-grid-cell {
+    border-bottom: 1px solid var(--border-color);
+    border-right: 1px solid var(--border-color);
+    background: var(--bg-card);
+    cursor: pointer;
+    transition: background 0.1s;
+    user-select: none;
+    min-height: 28px;
+}
+.avail-grid-cell:nth-child(8n) {
+    border-right: none;
+}
+.avail-grid-cell:hover, .avail-grid-cell.drag-hover {
+    background: rgba(227, 30, 36, 0.05);
+}
+.avail-grid-cell.selected {
+    background: rgba(227, 30, 36, 0.2);
+    border: 1px solid rgba(227, 30, 36, 0.4);
+}
+.avail-grid-cell.selected:hover {
+    background: rgba(227, 30, 36, 0.25);
 }

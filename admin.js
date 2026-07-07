@@ -5,10 +5,17 @@
 // ── Auth Guard ──
 if (!Session.requireAdmin()) { /* redirected */ }
 
-let currentWeekStart = '2026-06-08';
-let currentSchedWeekStart = '2026-06-08';
-let currentTimetableWeekStart = '2026-06-08';
+const __todayAdmin = new Date();
+const __adminYyyy = __todayAdmin.getFullYear();
+const __adminMm = String(__todayAdmin.getMonth() + 1).padStart(2, '0');
+const __adminDd = String(__todayAdmin.getDate()).padStart(2, '0');
+const __defaultAdminWeekStart = getWeekDates(`${__adminYyyy}-${__adminMm}-${__adminDd}`)[0];
+
+let currentWeekStart = __defaultAdminWeekStart;
+let currentSchedWeekStart = __defaultAdminWeekStart;
+let currentTimetableWeekStart = __defaultAdminWeekStart;
 let adminSchedulesView = 'list';
+let adminOverviewView = 'detail';
 let adminCurrentBranch = 'all';
 
 function changeAdminBranch(branch) {
@@ -219,13 +226,88 @@ function renderOverview() {
     const endStr = formatDateIndo(weekDates[5]);
     document.getElementById('admin-week-label').textContent = `${startStr} – ${endStr}`;
     
-    renderOverviewTable();
+    if (adminOverviewView === 'detail') {
+        renderOverviewTable();
+    } else {
+        renderRecapTable();
+    }
     updatePendingBadge();
 }
 
 function changeAdminWeek(offset) {
     currentWeekStart = adjustDateDays(currentWeekStart, offset * 7);
     renderOverview();
+}
+
+function setOverviewView(view) {
+    adminOverviewView = view;
+    document.getElementById('btn-overview-detail').classList.toggle('active', view === 'detail');
+    document.getElementById('btn-overview-recap').classList.toggle('active', view === 'recap');
+    
+    if (view === 'detail') {
+        document.getElementById('overview-detail-view').classList.remove('hidden');
+        document.getElementById('overview-recap-view').classList.add('hidden');
+        renderOverviewTable();
+    } else {
+        document.getElementById('overview-detail-view').classList.add('hidden');
+        document.getElementById('overview-recap-view').classList.remove('hidden');
+        renderRecapTable();
+    }
+}
+
+function renderRecapTable() {
+    const teachers = getFilteredTeachers();
+    const tbody = document.getElementById('recap-tbody');
+    
+    if (!teachers.length) {
+        tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted" style="padding:2rem;">Belum ada data Master Teacher.</td></tr>`;
+        return;
+    }
+    
+    const weekDates = getWeekDates(currentWeekStart);
+    const sundayDate = adjustDateDays(weekDates[5], 1);
+    const fullWeek = [...weekDates, sundayDate];
+    
+    let html = '';
+    
+    teachers.forEach(t => {
+        const avails = DB.getAvailability(t.id);
+        let totalMins = 0;
+        
+        let rowHtml = `<tr>
+            <td style="text-align:left;font-weight:700;">
+                <div style="display:flex;align-items:center;gap:.6rem;">
+                    <div style="width:28px;height:28px;border-radius:6px;background:${t.avatarBg};color:${t.avatarColor};
+                                display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.65rem;flex-shrink:0;">
+                        ${t.name.split(' ').map(w => w[0]).join('').slice(0,2)}
+                    </div>
+                    <span>${t.name}</span>
+                </div>
+            </td>`;
+        
+        fullWeek.forEach(date => {
+            const dayAvails = avails.filter(a => a.date === date);
+            if (dayAvails.length === 0) {
+                rowHtml += `<td style="color:var(--text-muted);font-size:.8rem;">-</td>`;
+            } else {
+                const slotsStr = dayAvails.map(a => `<div style="font-size:0.75rem; white-space:nowrap; background:rgba(40,167,69,0.1); color:var(--success); padding:2px 6px; border-radius:4px; margin:2px; display:inline-block; border:1px solid rgba(40,167,69,0.3);">${a.startTime}-${a.endTime}</div>`).join(' ');
+                rowHtml += `<td style="vertical-align:middle; line-height:1.4;">${slotsStr}</td>`;
+                
+                dayAvails.forEach(a => {
+                    const sParts = a.startTime.split(':').map(Number);
+                    const eParts = a.endTime.split(':').map(Number);
+                    totalMins += (eParts[0]*60 + eParts[1]) - (sParts[0]*60 + sParts[1]);
+                });
+            }
+        });
+        
+        const totalHours = (totalMins / 60).toFixed(1);
+        rowHtml += `<td style="font-weight:800;font-size:.9rem;background:var(--bg-sidebar);color:var(--text-primary);vertical-align:middle;">${totalHours} Jam</td></tr>`;
+        
+        html += rowHtml;
+    });
+    
+    tbody.innerHTML = html;
 }
 
 function renderStats() {
@@ -327,9 +409,10 @@ function renderOverviewTable() {
                     renderedScheduleIds.add(matchingSched.id);
                     chipsHtml += buildSchedChip(matchingSched);
                 } else {
+                    const subjStr = a.subject ? ` | ${a.subject}` : '';
                     chipsHtml += `
                     <span class="avail-chip" onclick="quickAssign('${t.id}','${dateStr}','${a.subject}','${a.startTime}','${a.endTime}')" data-tooltip="Klik untuk assign jadwal">
-                        ➕ ${a.startTime}–${a.endTime} | ${a.subject}
+                        ➕ ${a.startTime}–${a.endTime}${subjStr}
                     </span>`;
                 }
             });
@@ -420,6 +503,53 @@ function quickAssign(teacherId, dateStr, subject, startTime, endTime) {
     document.getElementById('assign-rombel').focus();
 }
 
+// Download Recap CSV for current week
+function downloadAvailCSV() {
+    const teachers = getFilteredTeachers();
+    const weekDates = getWeekDates(currentWeekStart);
+    const sundayDate = adjustDateDays(weekDates[5], 1);
+    const fullWeek = [...weekDates, sundayDate];
+    
+    const dayNames = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
+    
+    let csvContent = "data:text/csv;charset=utf-8,";
+    csvContent += "Nama MT," + dayNames.join(",") + ",Total Jam\n";
+    
+    teachers.forEach(t => {
+        const avails = DB.getAvailability(t.id);
+        let row = `"${t.name}",`;
+        let totalMins = 0;
+        
+        fullWeek.forEach(date => {
+            const dayAvails = avails.filter(a => a.date === date);
+            if (dayAvails.length === 0) {
+                row += '"-",';
+            } else {
+                const slotsStr = dayAvails.map(a => `${a.startTime}-${a.endTime}`).join('; ');
+                row += `"${slotsStr}",`;
+                
+                dayAvails.forEach(a => {
+                    const sParts = a.startTime.split(':').map(Number);
+                    const eParts = a.endTime.split(':').map(Number);
+                    totalMins += (eParts[0]*60 + eParts[1]) - (sParts[0]*60 + sParts[1]);
+                });
+            }
+        });
+        
+        const totalHours = (totalMins / 60).toFixed(1);
+        row += `"${totalHours} Jam"\n`;
+        csvContent += row;
+    });
+    
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `Rekap_Ketersediaan_${currentWeekStart}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+}
+
 // View availability detail for a teacher
 function viewAvailDetail(teacherId) {
     const teacher  = DB.getTeacher(teacherId);
@@ -428,46 +558,95 @@ function viewAvailDetail(teacherId) {
 
     document.getElementById('avail-detail-name').textContent = `Ketersediaan: ${teacher.name}`;
 
-    let html = `<div style="overflow-x:auto;">
-        <table class="avail-detail-table">
-            <thead><tr>
-                <th style="text-align:left;">Tanggal / Hari</th>
-                <th>Mata Pelajaran</th>
-                <th>Ketersediaan Waktu</th>
-                <th>Status Jadwal</th>
-            </tr></thead>
-            <tbody>`;
+    const weekDates = getWeekDates(currentWeekStart);
+    const sundayDate = adjustDateDays(weekDates[5], 1);
+    const fullWeek = [...weekDates, sundayDate];
 
-    if (!avails.length) {
-        html += `<tr><td colspan="4" class="text-center text-muted" style="padding:1.5rem;">MT belum mengisi data ketersediaan.</td></tr>`;
-    } else {
-        const sorted = [...avails].sort((a,b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime));
-        
-        sorted.forEach(a => {
-            const assigned = schedules.find(s => s.date === a.date && s.startTime === a.startTime && s.endTime === a.endTime);
-            let statusText = '<span class="status-badge badge-approved" style="font-size:.68rem;">Tersedia</span>';
-            if (assigned) {
-                const statusLabel = assigned.status === 'pending' ? '⏳ Menunggu' : assigned.status === 'approved' ? '✅ Disetujui' : '❌ Ditolak';
-                const badgeClass = assigned.status === 'pending' ? 'badge-pending' : assigned.status === 'approved' ? 'badge-approved' : 'badge-rejected';
-                statusText = `<span class="status-badge ${badgeClass}" style="font-size:.68rem;">${statusLabel}<br>${assigned.rombel}</span>`;
+    const availGridState = {};
+    const schedGridState = {};
+    fullWeek.forEach(d => {
+        availGridState[d] = new Set();
+        schedGridState[d] = new Map();
+    });
+
+    avails.forEach(a => {
+        if (availGridState[a.date]) {
+            let current = a.startTime;
+            while (current < a.endTime && current <= '20:30') {
+                availGridState[a.date].add(current);
+                let [h, m] = current.split(':').map(Number);
+                m += 30;
+                if (m >= 60) { h++; m -= 60; }
+                current = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
             }
-            const dayName = getDayNameFromDate(a.date);
-            const dateFormatted = formatDateIndo(a.date);
-            const badgeClass = getSubjectBadgeClass(a.subject);
-            html += `
-            <tr>
-                <td style="font-weight:700;text-align:left;">
-                    <div>${dayName}</div>
-                    <div class="text-muted" style="font-size:0.75rem; font-weight:normal; margin-top:2px;">${dateFormatted}</div>
-                </td>
-                <td><span class="subject-tag ${badgeClass}">${a.subject}</span></td>
-                <td><b>${a.startTime} – ${a.endTime}</b></td>
-                <td>${statusText}</td>
-            </tr>`;
-        });
+        }
+    });
+
+    schedules.forEach(s => {
+        if (schedGridState[s.date]) {
+            let current = s.startTime;
+            while (current < s.endTime && current <= '20:30') {
+                schedGridState[s.date].set(current, s);
+                let [h, m] = current.split(':').map(Number);
+                m += 30;
+                if (m >= 60) { h++; m -= 60; }
+                current = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+            }
+        }
+    });
+
+    const timeSlots = [];
+    for(let h=10; h<=20; h++) {
+        timeSlots.push(`${String(h).padStart(2,'0')}:00`);
+        timeSlots.push(`${String(h).padStart(2,'0')}:30`);
     }
 
-    html += '</tbody></table></div>';
+    let html = `<div class="avail-grid-wrap" style="max-height: 450px; overflow-y: auto;">
+        <div class="avail-grid" style="min-width:700px;">
+            <div class="avail-grid-header">
+                <div class="grid-h-cell" style="position:sticky;left:0;background:var(--bg-sidebar);z-index:2;display:flex;align-items:center;justify-content:center;">Time</div>`;
+    
+    const dayNames = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
+    fullWeek.forEach((date, i) => {
+        const parts = date.split('-');
+        html += `<div class="grid-h-cell">${dayNames[i]}<br><span style="font-weight:600;font-size:.68rem;opacity:.8;">${parts[2]}/${parts[1]}</span></div>`;
+    });
+    html += `</div>`;
+
+    timeSlots.forEach(time => {
+        html += `<div class="avail-grid-row">
+            <div class="avail-grid-time" style="position:sticky;left:0;background:var(--bg-sidebar);z-index:1;">${time}</div>`;
+        
+        fullWeek.forEach(date => {
+            let cellStyle = "background: var(--bg-card);";
+            let content = "";
+            if (schedGridState[date].has(time)) {
+                const s = schedGridState[date].get(time);
+                if (s.status === 'approved') cellStyle = "background: rgba(40, 167, 69, 0.2); border: 1px solid rgba(40, 167, 69, 0.4);";
+                else if (s.status === 'pending') cellStyle = "background: rgba(255, 193, 7, 0.2); border: 1px solid rgba(255, 193, 7, 0.4);";
+                else cellStyle = "background: rgba(220, 53, 69, 0.2); border: 1px solid rgba(220, 53, 69, 0.4);";
+                
+                if (time === s.startTime) {
+                    content = `<div style="font-size:0.6rem;font-weight:bold;color:var(--text-primary);padding:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${s.rombel}</div>`;
+                }
+            } else if (availGridState[date].has(time)) {
+                cellStyle = "background: rgba(227, 30, 36, 0.2); border: 1px solid rgba(227, 30, 36, 0.4);";
+            }
+            
+            html += `<div class="avail-grid-cell" style="${cellStyle}; pointer-events:none;">${content}</div>`;
+        });
+        html += `</div>`;
+    });
+    
+    html += `</div></div>`;
+    html += `
+    <div style="margin-top:1rem; display:flex; gap:1rem; align-items:center; flex-wrap:wrap;">
+        <span style="font-size:.75rem;"><span style="display:inline-block;width:12px;height:12px;background:rgba(227,30,36,0.2);border:1px solid rgba(227,30,36,0.4);vertical-align:middle;"></span> Tersedia</span>
+        <span style="font-size:.75rem;"><span style="display:inline-block;width:12px;height:12px;background:rgba(40,167,69,0.2);border:1px solid rgba(40,167,69,0.4);vertical-align:middle;"></span> Jadwal Aktif (Disetujui)</span>
+        <span style="font-size:.75rem;"><span style="display:inline-block;width:12px;height:12px;background:rgba(255,193,7,0.2);border:1px solid rgba(255,193,7,0.4);vertical-align:middle;"></span> Jadwal Menunggu</span>
+    </div>
+    `;
+
     html += `<div style="margin-top:1.25rem;display:flex;gap:.75rem;justify-content:flex-end;">
         <button class="btn btn-primary btn-sm" onclick="closeModal('modal-avail-detail');quickAssignByTeacher('${teacherId}')">
             ➕ Assign Jadwal Baru untuk MT ini

@@ -56,6 +56,41 @@
             color: var(--text-muted);
             white-space: nowrap;
         }
+        /* Autocomplete dropdown */
+        .teacher-autocomplete-wrap {
+            position: relative;
+        }
+        .teacher-suggestions {
+            position: absolute;
+            top: calc(100% + 4px);
+            left: 0; right: 0;
+            background: var(--bg-card, #1a1d27);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 999;
+            box-shadow: 0 8px 24px rgba(0,0,0,.4);
+            display: none;
+        }
+        .teacher-suggestions.open { display: block; }
+        .teacher-suggestion-item {
+            padding: .6rem 1rem;
+            cursor: pointer;
+            font-size: .9rem;
+            color: var(--text-primary);
+            transition: background .15s;
+        }
+        .teacher-suggestion-item:hover,
+        .teacher-suggestion-item.active {
+            background: rgba(227,30,36,.15);
+            color: var(--ba-red, #e31e24);
+        }
+        .teacher-suggestion-item mark {
+            background: transparent;
+            color: var(--ba-red, #e31e24);
+            font-weight: 700;
+        }
     </style>
 </head>
 <body>
@@ -118,13 +153,6 @@
             <button type="submit" class="btn btn-primary btn-block btn-lg" style="margin-top:.5rem;">
                 Masuk sebagai Admin
             </button>
-            <div style="display:flex; align-items:center; justify-content:center; margin:1rem 0;">
-                <hr style="flex-grow:1; border:none; border-top:1px solid rgba(255,255,255,0.1);"><span style="margin:0 10px; font-size:0.8rem; color:var(--text-muted);">ATAU</span><hr style="flex-grow:1; border:none; border-top:1px solid rgba(255,255,255,0.1);">
-            </div>
-            <button type="button" class="btn btn-outline btn-block btn-lg" style="display:flex; align-items:center; justify-content:center; gap:.5rem;" onclick="loginGoogle('admin')">
-                <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google" style="width:20px; height:20px;">
-                Login dengan Google
-            </button>
         </form>
         <p style="font-size:.75rem;color:var(--text-muted);text-align:center;margin-top:1rem;">
             Default: <code style="color:var(--text-secondary);">admin123</code>
@@ -142,9 +170,18 @@
         <form id="form-teacher-login" onsubmit="submitTeacherLogin(event)">
             <div class="form-group">
                 <label class="form-label">Nama Master Teacher</label>
-                <select id="teacher-select" class="form-control" required>
-                    <option value="">— Pilih nama Anda —</option>
-                </select>
+                <div class="teacher-autocomplete-wrap">
+                    <input
+                        type="text"
+                        id="teacher-name-search"
+                        class="form-control"
+                        placeholder="Ketik nama Anda..."
+                        autocomplete="off"
+                        required
+                    >
+                    <input type="hidden" id="teacher-select" required>
+                    <div class="teacher-suggestions" id="teacher-suggestions"></div>
+                </div>
             </div>
             <div class="form-group">
                 <label class="form-label" style="text-align:center;display:block;">PIN (4 digit)</label>
@@ -157,13 +194,6 @@
             </div>
             <button type="submit" class="btn btn-primary btn-block btn-lg">
                 Masuk ke Portal Saya
-            </button>
-            <div style="display:flex; align-items:center; justify-content:center; margin:1rem 0;">
-                <hr style="flex-grow:1; border:none; border-top:1px solid rgba(255,255,255,0.1);"><span style="margin:0 10px; font-size:0.8rem; color:var(--text-muted);">ATAU</span><hr style="flex-grow:1; border:none; border-top:1px solid rgba(255,255,255,0.1);">
-            </div>
-            <button type="button" class="btn btn-outline btn-block btn-lg" style="display:flex; align-items:center; justify-content:center; gap:.5rem;" onclick="loginGoogle('teacher')">
-                <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google" style="width:20px; height:20px;">
-                Login dengan Google
             </button>
         </form>
         <p style="font-size:.75rem;color:var(--text-muted);text-align:center;margin-top:1rem;">
@@ -206,16 +236,86 @@ function backToRole() {
     document.getElementById('step-role').classList.remove('hidden');
 }
 
+let _teacherList = [];
+
 async function populateTeacherSelect() {
-    const sel = document.getElementById('teacher-select');
-    sel.innerHTML = '<option value="">— Pilih nama Anda —</option>';
-    // Use FireDB if available, else fall back to local DB
-    const teachers = (typeof FireDB !== 'undefined') ? await FireDB.getTeachers() : DB.getTeachers();
-    teachers.forEach(t => {
-        const opt = document.createElement('option');
-        opt.value = t.id;
-        opt.textContent = t.name;
-        sel.appendChild(opt);
+    // Load list dari FireDB atau DB lokal
+    _teacherList = (typeof FireDB !== 'undefined') ? await FireDB.getTeachers() : DB.getTeachers();
+    setupTeacherAutocomplete();
+}
+
+function setupTeacherAutocomplete() {
+    const input       = document.getElementById('teacher-name-search');
+    const hiddenInput = document.getElementById('teacher-select');
+    const box         = document.getElementById('teacher-suggestions');
+    let activeIdx     = -1;
+
+    function highlight(query, name) {
+        if (!query) return name;
+        const re = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi');
+        return name.replace(re, '<mark>$1</mark>');
+    }
+
+    function render(list, query) {
+        box.innerHTML = '';
+        activeIdx = -1;
+        if (!list.length) {
+            box.classList.remove('open');
+            return;
+        }
+        list.forEach((t, i) => {
+            const item = document.createElement('div');
+            item.className = 'teacher-suggestion-item';
+            item.innerHTML = highlight(query, t.name);
+            item.addEventListener('mousedown', () => selectTeacher(t));
+            box.appendChild(item);
+        });
+        box.classList.add('open');
+    }
+
+    function selectTeacher(t) {
+        input.value        = t.name;
+        hiddenInput.value  = t.id;
+        box.classList.remove('open');
+        // Fokus ke PIN setelah pilih nama
+        document.getElementById('pin-0').focus();
+    }
+
+    input.addEventListener('input', () => {
+        const q = input.value.trim().toLowerCase();
+        hiddenInput.value = '';
+        if (!q) { box.classList.remove('open'); return; }
+        const filtered = _teacherList.filter(t => t.name.toLowerCase().includes(q));
+        render(filtered, input.value.trim());
+    });
+
+    input.addEventListener('keydown', e => {
+        const items = box.querySelectorAll('.teacher-suggestion-item');
+        if (!box.classList.contains('open') || !items.length) return;
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (activeIdx < items.length - 1) activeIdx++;
+            items.forEach((el, i) => el.classList.toggle('active', i === activeIdx));
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (activeIdx > 0) activeIdx--;
+            items.forEach((el, i) => el.classList.toggle('active', i === activeIdx));
+        } else if (e.key === 'Enter') {
+            if (activeIdx >= 0) {
+                e.preventDefault();
+                const t = _teacherList.filter(t => t.name.toLowerCase().includes(input.value.trim().toLowerCase()))[activeIdx];
+                if (t) selectTeacher(t);
+            }
+        } else if (e.key === 'Escape') {
+            box.classList.remove('open');
+        }
+    });
+
+    // Tutup saat klik di luar
+    document.addEventListener('click', e => {
+        if (!e.target.closest('.teacher-autocomplete-wrap')) {
+            box.classList.remove('open');
+        }
     });
 }
 
@@ -249,8 +349,11 @@ function submitAdminLogin(e) {
 
 async function submitTeacherLogin(e) {
     e.preventDefault();
-    const teacherId = document.getElementById('teacher-select').value;
-    if (!teacherId) { showToast('Pilih nama Anda terlebih dahulu.', 'warning'); return; }
+    const teacherId   = document.getElementById('teacher-select').value;
+    const teacherName = document.getElementById('teacher-name-search').value.trim();
+
+    if (!teacherName) { showToast('Masukkan nama Anda terlebih dahulu.', 'warning'); return; }
+    if (!teacherId)   { showToast('Nama tidak ditemukan. Pilih dari daftar yang muncul.', 'warning'); return; }
 
     const pin = [0,1,2,3].map(i => document.getElementById('pin-'+i).value).join('');
     if (pin.length < 4) { showToast('Masukkan 4 digit PIN.', 'warning'); return; }
@@ -274,56 +377,7 @@ async function submitTeacherLogin(e) {
     }
 }
 
-async function loginGoogle(role) {
-    if (typeof FireDB === 'undefined' || !await FireDB.isReady()) {
-        showToast('Koneksi ke Firebase gagal. Login Google tidak tersedia.', 'error');
-        return;
-    }
-
-    const overlay = document.createElement('div');
-    overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(15,17,23,0.8);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:600;font-size:1.1rem;';
-    overlay.innerHTML = 'Membuka Login Google... <div class="fb-spinner" style="width:24px;height:24px;margin-left:10px;border-width:3px;border-top-color:#fff;"></div>';
-    document.body.appendChild(overlay);
-
-    try {
-        const user = await FireDB.loginWithGoogle();
-        document.body.removeChild(overlay);
-        if (!user) {
-            showToast('Login dibatalkan atau gagal.', 'warning');
-            return;
-        }
-
-        if (role === 'admin') {
-            if (ADMIN_EMAILS.includes(user.email)) {
-                // Set admin profile photo and name in localStorage (since admin has no fixed entry in DB for this)
-                localStorage.setItem('adminProfile', JSON.stringify({ name: user.displayName, photoURL: user.photoURL }));
-                Session.save('admin');
-                showToast(`Selamat datang, Admin ${user.displayName}!`, 'success');
-                setTimeout(() => window.location.href = 'admin.html', 600);
-            } else {
-                showToast('Email Anda tidak terdaftar sebagai Admin.', 'error');
-                // Optional: sign out to clear session
-                if (window._Auth && window._firebaseAuth) window._Auth.signOut(window._firebaseAuth);
-            }
-        } else if (role === 'teacher') {
-            const teachers = await FireDB.getTeachers();
-            const matchedTeacher = teachers.find(t => t.email && t.email.toLowerCase() === user.email.toLowerCase());
-            if (matchedTeacher) {
-                // Optionally update their photoURL and name if not set, or let them handle it via settings.
-                Session.save('teacher', matchedTeacher.id);
-                showToast(`Selamat datang, ${matchedTeacher.name}!`, 'success');
-                setTimeout(() => window.location.href = 'teacher.html', 600);
-            } else {
-                showToast('Email Anda tidak ditemukan di daftar Master Teacher.', 'error');
-                if (window._Auth && window._firebaseAuth) window._Auth.signOut(window._firebaseAuth);
-            }
-        }
-    } catch (err) {
-        if(overlay.parentNode) document.body.removeChild(overlay);
-        showToast('Terjadi kesalahan saat login Google.', 'error');
-        console.error(err);
-    }
-}
+// Fungsi loginGoogle dihapus — fitur login Google tidak digunakan lagi
 
 // ── Toast utility ──
 function showToast(msg, type='info') {

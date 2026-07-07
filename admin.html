@@ -158,18 +158,34 @@
                     <div class="page-title">📊 Overview Ketersediaan MT</div>
                     <div class="page-subtitle">Ringkasan ketersediaan semua Master Teacher per hari & sesi</div>
                 </div>
-                <div class="week-nav-container">
-                    <button class="btn btn-secondary btn-sm" onclick="changeAdminWeek(-1)">⬅️ Sebelumnya</button>
-                    <span class="week-nav-title" id="admin-week-label">—</span>
-                    <button class="btn btn-secondary btn-sm" onclick="changeAdminWeek(1)">Berikutnya ➡️</button>
+                <div style="display:flex; gap:1rem; align-items:center;">
+                    <div class="week-nav-container">
+                        <button class="btn btn-secondary btn-sm" onclick="changeAdminWeek(-1)">⬅️ Sebelumnya</button>
+                        <span class="week-nav-title" id="admin-week-label">—</span>
+                        <button class="btn btn-secondary btn-sm" onclick="changeAdminWeek(1)">Berikutnya ➡️</button>
+                    </div>
+                    <button class="btn btn-outline btn-sm" style="color:var(--success);border-color:var(--success);" onclick="downloadAvailCSV()">
+                        📥 Unduh Rekap (CSV)
+                    </button>
                 </div>
             </div>
 
             <!-- Stat Cards -->
             <div class="stats-row" id="admin-stats"></div>
 
-            <!-- Legend -->
-            <div class="card card-sm mb-2" style="display:flex;align-items:center;gap:1.5rem;flex-wrap:wrap;margin-bottom:1.25rem;">
+            <!-- View Toggle -->
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:1rem;">
+                <div style="font-weight:700; color:var(--text-primary); font-size:1.1rem;">Tabel Ketersediaan</div>
+                <div class="view-toggle-bar">
+                    <button class="view-toggle-btn active" id="btn-overview-detail" onclick="setOverviewView('detail')">📝 Detail Harian</button>
+                    <button class="view-toggle-btn" id="btn-overview-recap" onclick="setOverviewView('recap')">📋 Rekap Jam (Tabel)</button>
+                </div>
+            </div>
+
+            <!-- Detail View -->
+            <div id="overview-detail-view">
+                <!-- Legend -->
+                <div class="card card-sm mb-2" style="display:flex;align-items:center;gap:1.5rem;flex-wrap:wrap;margin-bottom:1.25rem;">
                 <span style="font-size:.8rem;font-weight:700;color:var(--text-secondary);">Keterangan:</span>
                 <span style="display:flex;align-items:center;gap:.4rem;font-size:.78rem;color:var(--text-secondary);">
                     <span class="avail-chip" style="pointer-events:none;padding:.2rem .4rem;">➕ Jam | Mapel</span> Tersedia (Klik untuk assign jadwal)
@@ -182,25 +198,52 @@
                 </span>
             </div>
 
-            <!-- Big Table -->
-            <div class="card" style="padding:0;overflow:hidden;">
-                <div class="overview-table-wrap">
-                    <table class="overview-table" id="overview-table">
-                        <thead>
-                            <tr>
-                                <th rowspan="2" style="text-align:left;padding-left:1.25rem;">Nama MT</th>
-                                <th colspan="4">Keahlian Mengajar (Subjects)</th>
-                                <th rowspan="2">Hari</th>
-                                <th rowspan="2">Ketersediaan & Jadwal Mengajar Hari Ini</th>
-                            </tr>
-                            <tr>
-                                <th>SD</th><th>SMP</th><th>SMA</th><th>UTBK</th>
-                            </tr>
-                        </thead>
-                        <tbody id="overview-tbody">
-                            <!-- Dynamically populated -->
-                        </tbody>
-                    </table>
+                <!-- Big Table -->
+                <div class="card" style="padding:0;overflow:hidden;">
+                    <div class="overview-table-wrap">
+                        <table class="overview-table" id="overview-table">
+                            <thead>
+                                <tr>
+                                    <th rowspan="2" style="text-align:left;padding-left:1.25rem;">Nama MT</th>
+                                    <th colspan="4">Keahlian Mengajar (Subjects)</th>
+                                    <th rowspan="2">Hari</th>
+                                    <th rowspan="2">Ketersediaan & Jadwal Mengajar Hari Ini</th>
+                                </tr>
+                                <tr>
+                                    <th>SD</th><th>SMP</th><th>SMA</th><th>UTBK</th>
+                                </tr>
+                            </thead>
+                            <tbody id="overview-tbody">
+                                <!-- Dynamically populated -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recap View -->
+            <div id="overview-recap-view" class="hidden">
+                <div class="card" style="padding:0;overflow:hidden;">
+                    <div class="overview-table-wrap">
+                        <table class="overview-table" style="text-align:center;">
+                            <thead>
+                                <tr>
+                                    <th style="text-align:left;padding-left:1.25rem;">Nama MT</th>
+                                    <th>Senin</th>
+                                    <th>Selasa</th>
+                                    <th>Rabu</th>
+                                    <th>Kamis</th>
+                                    <th>Jumat</th>
+                                    <th>Sabtu</th>
+                                    <th>Minggu</th>
+                                    <th style="background:var(--bg-sidebar);color:var(--text-primary);">Total Jam</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recap-tbody">
+                                <!-- Dynamically populated -->
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>

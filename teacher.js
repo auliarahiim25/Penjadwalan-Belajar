@@ -6,10 +6,16 @@
 const teacherId = Session.requireTeacher();
 if (!teacherId) { /* redirected */ }
 
+const __todayTeacher = new Date();
+const __teacherYyyy = __todayTeacher.getFullYear();
+const __teacherMm = String(__todayTeacher.getMonth() + 1).padStart(2, '0');
+const __teacherDd = String(__todayTeacher.getDate()).padStart(2, '0');
+const __defaultTeacherWeekStart = getWeekDates(`${__teacherYyyy}-${__teacherMm}-${__teacherDd}`)[0];
+
 let teacher = null;
 let currentFilter = 'all';
 let activeView = 'list';
-let currentWeekStart = '2026-06-08';
+let currentWeekStart = __defaultTeacherWeekStart;
 
 function getSubjectBadgeClass(subject) {
     if (!subject) return 'level-custom';
@@ -59,7 +65,7 @@ function switchPage(page) {
     document.getElementById('bn-' + page)?.classList.add('active');
 
     if (page === 'dashboard')    renderDashboard();
-    if (page === 'availability') renderAvailabilityList();
+    if (page === 'availability') initAvailGrid();
     if (page === 'myschedules')  renderMySchedules();
     if (page === 'settings')     renderTeacherSettings();
 }
@@ -242,77 +248,287 @@ function renderDashSchedules() {
 }
 
 // ────────────────────────────────────────────────────────────────────
-//  AVAILABILITY REDESIGNED LIST & MODAL
+//  WEEKLY AVAILABILITY GRID (REDESIGNED)
 // ────────────────────────────────────────────────────────────────────
-function renderAvailabilityList() {
-    const tbody = document.getElementById('avail-list-tbody');
-    const list = DB.getAvailability(teacherId);
+let currentAvailWeekStart = ''; 
+let availGridState = {}; // map of date -> Set of startTimes
+let isDraggingAvail = false;
+let dragAvailMode = true; // true = selecting, false = deselecting
+let copiedAvailState = null;
 
-    if (!list.length) {
-        tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted" style="padding:2rem;">
-            Belum ada data ketersediaan mengajar yang didaftarkan.
-        </td></tr>`;
-        return;
+function initAvailGrid() {
+    if (!currentAvailWeekStart) {
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        currentAvailWeekStart = getWeekDates(`${yyyy}-${mm}-${dd}`)[0];
     }
-
-    // Sort by date then start time
-    list.sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime));
-
-    tbody.innerHTML = list.map(item => {
-        const dayName = getDayNameFromDate(item.date);
-        const formattedDate = formatDateIndo(item.date);
-        return `
-        <tr class="${statusClass}">
-            <td>
-                <div style="font-weight:700;color:var(--text-primary);">${dayName}</div>
-                <div style="font-size:.75rem;color:var(--text-secondary);">${formatDateIndo(item.date)}</div>
-            </td>
-            <td>
-                <div style="font-weight:800;color:var(--ba-red);">${item.startTime} - ${item.endTime}</div></td>
-            <td style="text-align: center;">
-                <button class="btn btn-outline btn-sm" style="color:var(--danger); border-color:var(--danger-light);" onclick="deleteAvailability('${item.id}')">
-                    🗑️ Hapus
-                </button>
-            </td>
-        </tr>`;
-    }).join('');
+    renderWeeklyAvailabilityGrid();
 }
 
-function openAddAvailModal() {
-    document.getElementById('form-avail').reset();
+function renderWeeklyAvailabilityGrid() {
+    const weekDates = getWeekDates(currentAvailWeekStart);
+    const sundayDate = adjustDateDays(weekDates[5], 1);
+    const fullWeek = [...weekDates, sundayDate];
     
-    // Set default value of date picker to today's date
+    // Update label
+    const startStr = formatDateIndo(fullWeek[0]);
+    const endStr = formatDateIndo(fullWeek[6]);
+    document.getElementById('avail-week-label').textContent = `${startStr.split(' ').slice(0,2).join(' ')} – ${endStr}`;
+    
+    const container = document.getElementById('avail-grid-container');
+    container.innerHTML = '';
+
+    // Generate timeslots from 10:00 to 20:30
+    const timeSlots = [];
+    for(let h=10; h<=20; h++) {
+        timeSlots.push(`${String(h).padStart(2,'0')}:00`);
+        timeSlots.push(`${String(h).padStart(2,'0')}:30`);
+    }
+
+    // Get current DB availability and parse it
+    const dbAvails = DB.getAvailability(teacherId);
+    availGridState = {};
+    fullWeek.forEach(d => availGridState[d] = new Set());
+    
+    dbAvails.forEach(a => {
+        if (availGridState[a.date]) {
+            let current = a.startTime;
+            while (current < a.endTime && current <= '20:30') {
+                availGridState[a.date].add(current);
+                let [h, m] = current.split(':').map(Number);
+                m += 30;
+                if (m >= 60) { h++; m -= 60; }
+                current = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+            }
+        }
+    });
+
+    const grid = document.createElement('div');
+    grid.className = 'avail-grid';
+
+    // Header Row
+    let headerHTML = `<div class="avail-grid-header"><div class="grid-h-cell" style="display:flex;align-items:center;justify-content:center;">Time</div>`;
+    const dayNames = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
+    fullWeek.forEach((date, i) => {
+        const parts = date.split('-');
+        headerHTML += `<div class="grid-h-cell">${dayNames[i]}<br><span style="font-weight:600;font-size:.68rem;opacity:.8;">${parts[2]}/${parts[1]}</span></div>`;
+    });
+    headerHTML += `</div>`;
+    grid.innerHTML = headerHTML;
+
+    // Body Rows
+    timeSlots.forEach(time => {
+        const row = document.createElement('div');
+        row.className = 'avail-grid-row';
+        
+        const timeCell = document.createElement('div');
+        timeCell.className = 'avail-grid-time';
+        timeCell.textContent = time;
+        row.appendChild(timeCell);
+
+        fullWeek.forEach(date => {
+            const cell = document.createElement('div');
+            cell.className = 'avail-grid-cell';
+            cell.dataset.date = date;
+            cell.dataset.time = time;
+            if (availGridState[date].has(time)) {
+                cell.classList.add('selected');
+            }
+
+            // Events for drag to select
+            cell.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                isDraggingAvail = true;
+                dragAvailMode = !cell.classList.contains('selected');
+                toggleCell(cell);
+            });
+            cell.addEventListener('mouseenter', (e) => {
+                if (isDraggingAvail) toggleCell(cell, true);
+            });
+            
+            row.appendChild(cell);
+        });
+        grid.appendChild(row);
+    });
+
+    document.addEventListener('mouseup', () => { isDraggingAvail = false; }, { once: false });
+
+    container.appendChild(grid);
+}
+
+function toggleCell(cell, forceDrag = false) {
+    if (forceDrag) {
+        if (dragAvailMode) cell.classList.add('selected');
+        else cell.classList.remove('selected');
+    } else {
+        cell.classList.toggle('selected');
+    }
+    
+    const date = cell.dataset.date;
+    const time = cell.dataset.time;
+    if (cell.classList.contains('selected')) {
+        availGridState[date].add(time);
+    } else {
+        availGridState[date].delete(time);
+    }
+}
+
+function changeAvailWeek(offset) {
+    currentAvailWeekStart = adjustDateDays(currentAvailWeekStart, offset * 7);
+    renderWeeklyAvailabilityGrid();
+}
+function setAvailToThisWeek() {
     const today = new Date();
     const yyyy = today.getFullYear();
     const mm = String(today.getMonth() + 1).padStart(2, '0');
     const dd = String(today.getDate()).padStart(2, '0');
-    document.getElementById('avail-date').value = `${yyyy}-${mm}-${dd}`;
-
-    openModal('modal-avail');
+    currentAvailWeekStart = getWeekDates(`${yyyy}-${mm}-${dd}`)[0];
+    renderWeeklyAvailabilityGrid();
 }
-
-async function submitAvailabilityForm(e) {
-    e.preventDefault();
-    const date = document.getElementById('avail-date').value;
-    const startTime = document.getElementById('avail-start').value;
-    const endTime = document.getElementById('avail-end').value;
-
-    if (startTime >= endTime) {
-        showToast('Jam selesai harus setelah jam mulai.', 'warning');
+function setAvailToNextWeek() {
+    setAvailToThisWeek();
+    changeAvailWeek(1);
+}
+function copyLastWeekAvail() {
+    // Look back 7 days from currentAvailWeekStart to find previously saved patterns
+    const prevWeekStart = adjustDateDays(currentAvailWeekStart, -7);
+    const prevWeekDates = getWeekDates(prevWeekStart);
+    const prevSunday = adjustDateDays(prevWeekDates[5], 1);
+    const prevFullWeek = [...prevWeekDates, prevSunday];
+    
+    const dbAvails = DB.getAvailability(teacherId);
+    
+    // Check if there's any availability last week
+    const lastWeekAvails = dbAvails.filter(a => prevFullWeek.includes(a.date));
+    
+    if (lastWeekAvails.length === 0) {
+        showToast('Tidak ada jadwal minggu lalu.', 'warning');
         return;
     }
 
-    await FireDB.addAvailability(teacherId, { date, subject: '', startTime, endTime });
-    closeModal('modal-avail');
-    showToast('Ketersediaan berhasil disimpan!', 'success');
-    renderAvailabilityList();
+    // Build the grid state from last week
+    const lastWeekGridState = {};
+    prevFullWeek.forEach(d => lastWeekGridState[d] = new Set());
+    lastWeekAvails.forEach(a => {
+        let current = a.startTime;
+        while (current < a.endTime && current <= '20:30') {
+            lastWeekGridState[a.date].add(current);
+            let [h, m] = current.split(':').map(Number);
+            m += 30;
+            if (m >= 60) { h++; m -= 60; }
+            current = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+        }
+    });
+
+    // Copy to this week
+    const weekDates = getWeekDates(currentAvailWeekStart);
+    const sundayDate = adjustDateDays(weekDates[5], 1);
+    const fullWeek = [...weekDates, sundayDate];
+
+    fullWeek.forEach((date, i) => {
+        const prevDate = prevFullWeek[i];
+        if (lastWeekGridState[prevDate]) {
+            lastWeekGridState[prevDate].forEach(t => availGridState[date].add(t));
+        }
+    });
+
+    renderWeeklyAvailabilityGrid();
+    showToast('Jadwal minggu lalu berhasil di-copy', 'success');
+}
+function copyCurrentWeekAvail() {
+    copiedAvailState = {};
+    const weekDates = getWeekDates(currentAvailWeekStart);
+    const sundayDate = adjustDateDays(weekDates[5], 1);
+    const fullWeek = [...weekDates, sundayDate];
+
+    fullWeek.forEach((date, i) => {
+        copiedAvailState[i] = Array.from(availGridState[date]);
+    });
+    document.getElementById('btn-paste-avail').disabled = false;
+    showToast('Jadwal minggu ini disalin', 'info');
+}
+function pasteAvail() {
+    if (!copiedAvailState) return;
+    const weekDates = getWeekDates(currentAvailWeekStart);
+    const sundayDate = adjustDateDays(weekDates[5], 1);
+    const fullWeek = [...weekDates, sundayDate];
+    
+    fullWeek.forEach((date, i) => {
+        if (copiedAvailState[i]) {
+            copiedAvailState[i].forEach(t => availGridState[date].add(t));
+        }
+    });
+    renderWeeklyAvailabilityGrid();
+    showToast('Jadwal berhasil di-paste', 'success');
+}
+function resetThisWeekAvail() {
+    const weekDates = getWeekDates(currentAvailWeekStart);
+    const sundayDate = adjustDateDays(weekDates[5], 1);
+    const fullWeek = [...weekDates, sundayDate];
+    fullWeek.forEach(d => availGridState[d] = new Set());
+    renderWeeklyAvailabilityGrid();
 }
 
-async function deleteAvailability(id) {
-    if (!confirm('Hapus ketersediaan ini? Admin tidak akan bisa mengassign jadwal di waktu ini.')) return;
-    await FireDB.deleteAvailability(id);
-    showToast('Ketersediaan berhasil dihapus.', 'info');
-    renderAvailabilityList();
+async function saveWeeklyAvailability() {
+    const btn = document.getElementById('btn-save-avail');
+    btn.disabled = true;
+    btn.innerHTML = '<div class="fb-spinner" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:6px;border-width:2px;"></div> Menyimpan...';
+
+    const oldAvails = DB.getAvailability(teacherId);
+    
+    const weekDates = getWeekDates(currentAvailWeekStart);
+    const sundayDate = adjustDateDays(weekDates[5], 1);
+    const fullWeek = [...weekDates, sundayDate];
+    
+    const availsToDelete = oldAvails.filter(a => fullWeek.includes(a.date));
+    
+    for (const a of availsToDelete) {
+        if (typeof FireDB !== 'undefined' && await FireDB.isReady()) {
+            await FireDB.deleteAvailability(a.id);
+        } else {
+            DB.deleteAvailability(a.id);
+        }
+    }
+    
+    for (const date of fullWeek) {
+        const times = Array.from(availGridState[date]).sort();
+        if (!times.length) continue;
+        
+        let blockStart = times[0];
+        let blockEnd = add30Mins(blockStart);
+        
+        for (let i = 1; i < times.length; i++) {
+            if (times[i] === blockEnd) {
+                blockEnd = add30Mins(times[i]);
+            } else {
+                if (typeof FireDB !== 'undefined' && await FireDB.isReady()) {
+                    await FireDB.addAvailability(teacherId, { date, subject: '', startTime: blockStart, endTime: blockEnd });
+                } else {
+                    DB.addAvailability(teacherId, { date, subject: '', startTime: blockStart, endTime: blockEnd });
+                }
+                blockStart = times[i];
+                blockEnd = add30Mins(times[i]);
+            }
+        }
+        if (typeof FireDB !== 'undefined' && await FireDB.isReady()) {
+            await FireDB.addAvailability(teacherId, { date, subject: '', startTime: blockStart, endTime: blockEnd });
+        } else {
+            DB.addAvailability(teacherId, { date, subject: '', startTime: blockStart, endTime: blockEnd });
+        }
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = '💾 Save Changes';
+    showToast('Ketersediaan berhasil disimpan!', 'success');
+}
+
+function add30Mins(timeStr) {
+    let [h, m] = timeStr.split(':').map(Number);
+    m += 30;
+    if (m >= 60) { h++; m -= 60; }
+    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
 }
 
 // ────────────────────────────────────────────────────────────────────

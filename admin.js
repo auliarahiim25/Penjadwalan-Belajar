@@ -149,6 +149,7 @@ function renderAdminSettings() {
     
     document.getElementById('admin-name-input').value = profile.name;
     document.getElementById('admin-pass-input').value = '';
+    document.getElementById('admin-pass-confirm').value = '';
     
     const settingsAvatar = document.getElementById('settings-admin-avatar');
     if (profile.photoURL) {
@@ -172,10 +173,21 @@ async function submitAdminSettings(e) {
         
         const newPass = document.getElementById('admin-pass-input').value;
         if (newPass.length > 0) {
-            // Note: Currently ADMIN_PASSWORD is hardcoded in data.js.
-            // If they change it here, we should probably save it in localStorage 
-            // and override ADMIN_PASSWORD check in index.html, but for now we just show a toast.
-            showToast('Fitur ubah password lokal belum diimplementasikan sepenuhnya (masih hardcoded).', 'warning');
+            if (newPass.length < 4) {
+                showToast('Password minimal 4 karakter.', 'warning');
+                btn.disabled = false;
+                btn.innerHTML = '💾 Simpan Perubahan';
+                return;
+            }
+            const confirmPass = document.getElementById('admin-pass-confirm').value;
+            if (newPass !== confirmPass) {
+                showToast('Konfirmasi password tidak cocok.', 'error');
+                btn.disabled = false;
+                btn.innerHTML = '💾 Simpan Perubahan';
+                return;
+            }
+            localStorage.setItem('ba_admin_password', newPass);
+            showToast('Password admin berhasil diubah!', 'success');
         }
         
         const fileInput = document.getElementById('admin-photo-input');
@@ -363,7 +375,10 @@ function buildSchedChip(s) {
     <div class="sched-chip ${s.status}"${rejectTooltip}>
         <div style="font-weight:800; display:flex; align-items:center; justify-content:space-between; width:100%; gap:4px;">
             <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${stat.emoji} ${s.startTime}–${s.endTime} | ${s.subject}</span>
-            <button class="sched-chip-delete-btn" onclick="event.stopPropagation(); deleteSchedule('${s.id}')" title="Hapus Jadwal">×</button>
+            <div style="display:flex;gap:1px;">
+                <button class="sched-chip-delete-btn" onclick="event.stopPropagation(); editSchedule('${s.id}')" title="Edit Jadwal" style="color:var(--warning);">✏️</button>
+                <button class="sched-chip-delete-btn" onclick="event.stopPropagation(); deleteSchedule('${s.id}')" title="Hapus Jadwal">×</button>
+            </div>
         </div>
         <div class="sched-chip-meta">
             <span>🏫 ${s.room} · 👥 ${s.rombel}${s.ket ? ` · 🏷️ ${s.ket}` : ''}</span>
@@ -931,6 +946,8 @@ function renderSchedulesList() {
             </td>
             <td>
                 <div class="schedule-row-actions">
+                    <button class="btn btn-icon btn-sm" title="Edit jadwal ini"
+                        onclick="editSchedule('${s.id}')">✏️</button>
                     <button class="btn btn-icon btn-sm" title="Hapus jadwal ini"
                         onclick="deleteSchedule('${s.id}')">🗑️</button>
                 </div>
@@ -983,7 +1000,10 @@ function renderWeeklyGridSchedulesAdmin() {
                     </div>
                     <div style="margin-top:4px;display:flex;align-items:center;justify-content:space-between;">
                         ${statusBadge}
-                        <button class="btn btn-icon btn-sm" style="padding:1px 4px;font-size:.65rem;" onclick="deleteSchedule('${s.id}')" title="Hapus">🗑️</button>
+                        <div style="display:flex;gap:2px;">
+                            <button class="btn btn-icon btn-sm" style="padding:1px 4px;font-size:.65rem;" onclick="editSchedule('${s.id}')" title="Edit">✏️</button>
+                            <button class="btn btn-icon btn-sm" style="padding:1px 4px;font-size:.65rem;" onclick="deleteSchedule('${s.id}')" title="Hapus">🗑️</button>
+                        </div>
                     </div>
                 </div>`;
             }).join('');
@@ -1025,6 +1045,137 @@ async function deleteSchedule(id) {
     if (!confirm('Hapus jadwal ini?')) return;
     await FireDB.deleteSchedule(id);
     showToast('Jadwal dihapus.', 'info');
+    renderAll();
+}
+
+// ────────────────────────────────────────────────────────────────────
+//  EDIT SCHEDULE (Admin can edit approved/pending/rejected schedules)
+// ────────────────────────────────────────────────────────────────────
+function populateEditScheduleSelects() {
+    // Populate MAPEL
+    const subSel = document.getElementById('edit-sched-subject');
+    subSel.innerHTML = '<option value="">— Pilih Mapel —</option>';
+    MAPEL_LIST.forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m;
+        opt.textContent = m;
+        subSel.appendChild(opt);
+    });
+
+    // Populate KELAS
+    const rombelSel = document.getElementById('edit-sched-rombel');
+    rombelSel.innerHTML = '<option value="">— Pilih Kelas —</option>';
+    KELAS_LIST.forEach(k => {
+        const opt = document.createElement('option');
+        opt.value = k;
+        opt.textContent = k;
+        rombelSel.appendChild(opt);
+    });
+
+    // Populate KET
+    const ketSel = document.getElementById('edit-sched-ket');
+    ketSel.innerHTML = '<option value="">— Pilih Keterangan —</option>';
+    KET_LIST.forEach(k => {
+        const opt = document.createElement('option');
+        opt.value = k;
+        opt.textContent = k;
+        ketSel.appendChild(opt);
+    });
+
+    // Populate RUANGAN
+    const roomSel = document.getElementById('edit-sched-room');
+    roomSel.innerHTML = '<option value="">— Pilih Ruangan —</option>';
+    RUANGAN_LIST.forEach(r => {
+        const opt = document.createElement('option');
+        opt.value = r;
+        opt.textContent = r;
+        roomSel.appendChild(opt);
+    });
+}
+
+function editSchedule(id) {
+    const s = DB.getSchedules().find(sc => sc.id === id);
+    if (!s) { showToast('Jadwal tidak ditemukan.', 'error'); return; }
+
+    const teacher = DB.getTeacher(s.teacherId);
+    const dayName = getDayNameFromDate(s.date);
+    const dateFormatted = formatDateIndo(s.date);
+
+    populateEditScheduleSelects();
+
+    // Fill hidden ID
+    document.getElementById('edit-sched-id').value = s.id;
+
+    // Read-only info
+    document.getElementById('edit-sched-teacher-name').textContent = teacher ? teacher.name : '?';
+    document.getElementById('edit-sched-date-label').textContent = `${dayName}, ${dateFormatted}`;
+    document.getElementById('edit-sched-status-badge').innerHTML = getStatusBadge(s.status);
+
+    // Ensure current values exist in dropdowns (in case they were custom)
+    const subSel = document.getElementById('edit-sched-subject');
+    if (s.subject && !Array.from(subSel.options).some(o => o.value === s.subject)) {
+        const opt = document.createElement('option');
+        opt.value = s.subject;
+        opt.textContent = s.subject;
+        subSel.appendChild(opt);
+    }
+    subSel.value = s.subject || '';
+
+    const rombelSel = document.getElementById('edit-sched-rombel');
+    if (s.rombel && !Array.from(rombelSel.options).some(o => o.value === s.rombel)) {
+        const opt = document.createElement('option');
+        opt.value = s.rombel;
+        opt.textContent = s.rombel;
+        rombelSel.appendChild(opt);
+    }
+    rombelSel.value = s.rombel || '';
+
+    const ketSel = document.getElementById('edit-sched-ket');
+    if (s.ket && !Array.from(ketSel.options).some(o => o.value === s.ket)) {
+        const opt = document.createElement('option');
+        opt.value = s.ket;
+        opt.textContent = s.ket;
+        ketSel.appendChild(opt);
+    }
+    ketSel.value = s.ket || '';
+
+    const roomSel = document.getElementById('edit-sched-room');
+    if (s.room && !Array.from(roomSel.options).some(o => o.value === s.room)) {
+        const opt = document.createElement('option');
+        opt.value = s.room;
+        opt.textContent = s.room;
+        roomSel.appendChild(opt);
+    }
+    roomSel.value = s.room || '';
+
+    // Time fields
+    document.getElementById('edit-sched-start-time').value = s.startTime || '';
+    document.getElementById('edit-sched-end-time').value = s.endTime || '';
+
+    openModal('modal-edit-schedule');
+}
+
+async function submitEditSchedule(e) {
+    e.preventDefault();
+
+    const id = document.getElementById('edit-sched-id').value;
+    const subject = document.getElementById('edit-sched-subject').value.trim();
+    const rombel = document.getElementById('edit-sched-rombel').value.trim();
+    const ket = document.getElementById('edit-sched-ket').value;
+    const room = document.getElementById('edit-sched-room').value;
+    const startTime = document.getElementById('edit-sched-start-time').value;
+    const endTime = document.getElementById('edit-sched-end-time').value;
+
+    if (startTime >= endTime) {
+        showToast('Jam selesai harus setelah jam mulai.', 'warning');
+        return;
+    }
+
+    const updates = { subject, rombel, ket, room, startTime, endTime };
+
+    await FireDB.updateSchedule(id, updates);
+    closeModal('modal-edit-schedule');
+    showToast('Jadwal berhasil diperbarui!', 'success');
     renderAll();
 }
 

@@ -329,7 +329,15 @@ const SESSIONS = [
 
 const DAYS = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 
-const ADMIN_PASSWORD = 'admin123';
+const ADMIN_PASSWORD_DEFAULT = 'admin123';
+
+function getAdminPassword() {
+    const saved = localStorage.getItem('ba_admin_password');
+    return saved || ADMIN_PASSWORD_DEFAULT;
+}
+
+// Keep for backward compat (read-only reference to current password)
+const ADMIN_PASSWORD = ADMIN_PASSWORD_DEFAULT;
 const ADMIN_EMAILS = ['admin@brainacademia.id', 'admin@gmail.com']; // Add allowed admin emails here
 
 // --- Database API ---
@@ -428,6 +436,15 @@ const DB = {
             s.status = status;
             s.rejectReason = rejectReason;
             s.respondedAt = new Date().toISOString();
+        }
+        this.flush();
+    },
+    updateSchedule(id, updates) {
+        const db = this.get();
+        const s = db.schedules.find(s => s.id === id);
+        if (s) {
+            Object.assign(s, updates);
+            s.updatedAt = new Date().toISOString();
         }
         this.flush();
     },

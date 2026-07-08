@@ -87,6 +87,9 @@
         <div class="sidebar-link" id="sb-settings" onclick="switchPage('settings')">
             <span class="s-icon">⚙️</span> Pengaturan
         </div>
+        <a href="rekap.html" target="_blank" class="sidebar-link" style="color:var(--success);text-decoration:none;">
+            <span class="s-icon">📋</span> Rekap Jadwal Hari Ini
+        </a>
         <div class="sidebar-section-title" style="margin-top:auto;">Sistem</div>
         <div class="sidebar-link" id="sb-firebase-status" style="cursor:default; font-size:.78rem; gap:.4rem;" title="Status koneksi Firebase">
             <span class="s-icon">🔥</span>
@@ -423,6 +426,10 @@
                         <label class="form-label">Password Admin Baru (Opsional)</label>
                         <input type="password" id="admin-pass-input" class="form-control" placeholder="Kosongkan jika tidak ingin mengubah password">
                     </div>
+                    <div class="form-group">
+                        <label class="form-label">Konfirmasi Password Baru</label>
+                        <input type="password" id="admin-pass-confirm" class="form-control" placeholder="Ulangi password baru di atas">
+                    </div>
                     
                     <button type="submit" class="btn btn-primary" id="btn-save-admin-settings" style="width:100%; margin-top: 1rem;">
                         💾 Simpan Perubahan
@@ -635,6 +642,77 @@
             <div style="display:flex; gap:10px; margin-top:1.5rem;">
                 <button type="button" class="btn btn-secondary" style="flex:1;" onclick="closeModal('modal-template')">Batal</button>
                 <button type="submit" class="btn btn-primary" style="flex:1;">💾 Simpan Peta Jadwal</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ══ MODAL: EDIT SCHEDULE ══ -->
+<div class="modal-overlay" id="modal-edit-schedule">
+    <div class="modal-box modal-lg">
+        <button class="modal-close-btn" onclick="closeModal('modal-edit-schedule')">×</button>
+        <div class="modal-header">
+            <div class="modal-icon" style="background:rgba(255,193,7,0.15);color:#f59e0b;">✏️</div>
+            <div class="modal-title">Edit Jadwal</div>
+            <div class="modal-subtitle">Ubah detail jadwal yang telah di-assign</div>
+        </div>
+
+        <form id="form-edit-schedule" onsubmit="submitEditSchedule(event)">
+            <input type="hidden" id="edit-sched-id">
+
+            <!-- Read-only info -->
+            <div class="card card-sm mb-2" style="margin-bottom:1rem; background:var(--bg-sidebar); border:1px solid var(--border-color); padding:0.75rem 1rem;">
+                <div style="display:flex; gap:1.5rem; flex-wrap:wrap; font-size:0.85rem;">
+                    <div><span style="color:var(--text-secondary);">Master Teacher:</span> <strong id="edit-sched-teacher-name">—</strong></div>
+                    <div><span style="color:var(--text-secondary);">Tanggal:</span> <strong id="edit-sched-date-label">—</strong></div>
+                    <div><span style="color:var(--text-secondary);">Status:</span> <span id="edit-sched-status-badge"></span></div>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Mata Pelajaran</label>
+                    <select id="edit-sched-subject" class="form-control" required>
+                        <option value="">— Pilih Mapel —</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Keterangan (Ket)</label>
+                    <select id="edit-sched-ket" class="form-control">
+                        <option value="">— Pilih Keterangan —</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Rombel / Kelas</label>
+                    <select id="edit-sched-rombel" class="form-control" required>
+                        <option value="">— Pilih Kelas —</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Ruangan</label>
+                    <select id="edit-sched-room" class="form-control" required>
+                        <option value="">— Pilih Ruangan —</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Jam Mulai</label>
+                    <input type="time" id="edit-sched-start-time" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Jam Selesai</label>
+                    <input type="time" id="edit-sched-end-time" class="form-control" required>
+                </div>
+            </div>
+
+            <div style="display:flex;gap:.75rem;justify-content:flex-end;margin-top:.5rem;">
+                <button type="button" class="btn btn-outline" onclick="closeModal('modal-edit-schedule')">Batal</button>
+                <button type="submit" class="btn btn-primary">💾 Simpan Perubahan</button>
             </div>
         </form>
     </div>

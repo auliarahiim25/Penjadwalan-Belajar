@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rekap Jadwal Hari Ini — Brain Academia</title>
+    <meta name="description" content="Rekap jadwal mengajar hari ini — Brain Academia Center Pinrang & Parepare">
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        /* ── Page Layout ── */
+        .rekap-page {
+            min-height: 100vh;
+            background: var(--bg-body);
+        }
+        .rekap-header {
+            background: linear-gradient(135deg, #014A8E 0%, #1FA0E3 100%);
+            color: #fff;
+            padding: 1.5rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 1rem;
+            box-shadow: 0 4px 20px rgba(1, 74, 142, 0.2);
+        }
+        .rekap-header-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .rekap-header-left img {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            border: 2px solid rgba(255,255,255,0.3);
+        }
+        .rekap-header-title {
+            font-size: 1.3rem;
+            font-weight: 800;
+            letter-spacing: -0.3px;
+        }
+        .rekap-header-sub {
+            font-size: 0.82rem;
+            opacity: 0.85;
+            font-weight: 500;
+        }
+        .rekap-header-right {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        .rekap-date-display {
+            background: rgba(255,255,255,0.15);
+            backdrop-filter: blur(8px);
+            padding: 0.6rem 1.2rem;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        .rekap-live-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            background: rgba(16, 185, 129, 0.2);
+            color: #6ee7b7;
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 0.3rem 0.7rem;
+            border-radius: 99px;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .rekap-live-dot {
+            width: 7px;
+            height: 7px;
+            background: #10b981;
+            border-radius: 50%;
+            animation: livePulse 1.5s infinite;
+        }
+        @keyframes livePulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.8); }
+        }
+
+        /* ── Content ── */
+        .rekap-content {
+            max-width: 1300px;
+            margin: 0 auto;
+            padding: 1.5rem 1.5rem 3rem;
+        }
+
+        /* ── Filter / Controls ── */
+        .rekap-controls {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-bottom: 1.5rem;
+        }
+        .rekap-stats-row {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+        .rekap-stat-pill {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 0.5rem 1rem;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            box-shadow: var(--shadow-sm);
+        }
+        .rekap-stat-pill .stat-value {
+            font-size: 1.1rem;
+            font-weight: 800;
+            color: var(--text-primary);
+        }
+        .rekap-filter-bar {
+            display: flex;
+            gap: 0.6rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        /* ── Table ── */
+        .rekap-table-card {
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+        }
+        .rekap-table-wrap {
+            overflow-x: auto;
+        }
+        .rekap-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+        .rekap-table thead {
+            background: linear-gradient(135deg, #014A8E 0%, #0167b8 100%);
+            color: #fff;
+        }
+        .rekap-table thead th {
+            padding: 0.85rem 1rem;
+            font-weight: 700;
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+            text-align: left;
+        }
+        .rekap-table thead th:first-child {
+            padding-left: 1.25rem;
+        }
+        .rekap-table tbody tr {
+            border-bottom: 1px solid var(--border-color);
+            transition: background 0.15s;
+        }
+        .rekap-table tbody tr:hover {
+            background: rgba(1, 74, 142, 0.03);
+        }
+        .rekap-table tbody tr:last-child {
+            border-bottom: none;
+        }
+        .rekap-table td {
+            padding: 0.75rem 1rem;
+            vertical-align: middle;
+        }
+        .rekap-table td:first-child {
+            padding-left: 1.25rem;
+        }
+
+        /* ── Schedule Chips ── */
+        .rekap-teacher-cell {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+        .rekap-teacher-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 0.65rem;
+            flex-shrink: 0;
+        }
+        .rekap-teacher-name {
+            font-weight: 700;
+            color: var(--text-primary);
+            font-size: 0.85rem;
+        }
+        .rekap-time-cell {
+            font-weight: 700;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            white-space: nowrap;
+        }
+        .rekap-time-cell .time-icon {
+            margin-right: 0.3rem;
+        }
+        .rekap-subject-badge {
+            display: inline-block;
+            padding: 0.2rem 0.6rem;
+            border-radius: 6px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        .rekap-rombel-cell {
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+        .rekap-ket-cell {
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+        .rekap-room-cell {
+            font-weight: 700;
+            color: var(--ba-red);
+        }
+
+        /* ── Session Groups ── */
+        .session-divider-row td {
+            background: var(--bg-sidebar);
+            padding: 0.4rem 1.25rem !important;
+            font-weight: 800;
+            font-size: 0.78rem;
+            color: var(--ba-red);
+            letter-spacing: 0.3px;
+            border-bottom: 2px solid var(--ba-red) !important;
+        }
+
+        /* ── Status indicator ── */
+        .status-active-dot {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: var(--success);
+            background: var(--success-light);
+            padding: 0.2rem 0.6rem;
+            border-radius: 99px;
+        }
+        .status-upcoming-dot {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: var(--info);
+            background: var(--info-light);
+            padding: 0.2rem 0.6rem;
+            border-radius: 99px;
+        }
+        .status-done-dot {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            background: var(--bg-sidebar);
+            padding: 0.2rem 0.6rem;
+            border-radius: 99px;
+        }
+
+        /* ── Empty State ── */
+        .rekap-empty {
+            text-align: center;
+            padding: 4rem 2rem;
+        }
+        .rekap-empty-icon {
+            font-size: 3.5rem;
+            margin-bottom: 1rem;
+        }
+        .rekap-empty-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+        .rekap-empty-desc {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        /* ── Footer ── */
+        .rekap-footer {
+            text-align: center;
+            padding: 1.5rem;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        /* ── Auto Refresh Progress ── */
+        .auto-refresh-bar {
+            height: 3px;
+            background: rgba(1, 74, 142, 0.1);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-bottom: 1rem;
+        }
+        .auto-refresh-bar-inner {
+            height: 100%;
+            background: linear-gradient(90deg, var(--ba-red), var(--ba-orange));
+            width: 0%;
+            transition: width 1s linear;
+            border-radius: 2px;
+        }
+
+        /* ── Print styles ── */
+        @media print {
+            .rekap-header { background: #014A8E !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .rekap-controls .btn { display: none; }
+            .rekap-table thead { background: #014A8E !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            body { background: #fff; }
+        }
+
+        /* ── Responsive ── */
+        @media (max-width: 768px) {
+            .rekap-header { padding: 1rem; }
+            .rekap-header-title { font-size: 1rem; }
+            .rekap-content { padding: 1rem; }
+            .rekap-controls { flex-direction: column; align-items: stretch; }
+            .rekap-stats-row { justify-content: center; }
+            .rekap-filter-bar { justify-content: center; }
+        }
+
+        /* Firebase loading overlay */
+        #fb-loading-overlay {
+            position: fixed; inset: 0; z-index: 99999;
+            background: var(--bg-body);
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            gap: 1rem; transition: opacity .4s;
+        }
+        #fb-loading-overlay.hidden { opacity: 0; pointer-events: none; }
+        .fb-spinner {
+            width: 44px; height: 44px;
+            border: 4px solid rgba(1,74,142,.15);
+            border-top-color: #014A8E;
+            border-radius: 50%;
+            animation: spin .8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .fb-loading-text { color: var(--text-primary); font-size: .9rem; font-weight: 600; opacity: .8; }
+        .fb-loading-sub  { color: var(--text-muted); font-size: .75rem; }
+    </style>
+</head>
+<body>
+<div id="fb-loading-overlay">
+    <div class="fb-spinner"></div>
+    <div class="fb-loading-text">📋 Memuat Rekap Jadwal…</div>
+    <div class="fb-loading-sub">Menghubungkan ke database</div>
+</div>
+
+<div class="rekap-page">
+    <!-- ══ HEADER ══ -->
+    <header class="rekap-header">
+        <div class="rekap-header-left">
+            <img src="logo.png" alt="Brain Academia">
+            <div>
+                <div class="rekap-header-title">📋 Rekap Jadwal Hari Ini</div>
+                <div class="rekap-header-sub">Brain Academia Center — Jadwal Mengajar yang Berjalan</div>
+            </div>
+        </div>
+        <div class="rekap-header-right">
+            <div class="rekap-live-badge">
+                <span class="rekap-live-dot"></span>
+                LIVE
+            </div>
+            <div class="rekap-date-display">
+                📅 <span id="rekap-date-label">—</span>
+            </div>
+            <a href="index.html" class="btn btn-outline" style="color:#fff;border-color:rgba(255,255,255,0.4);font-size:0.8rem;padding:0.4rem 0.8rem;border-radius:8px;">
+                🏠 Login
+            </a>
+        </div>
+    </header>
+
+    <!-- ══ CONTENT ══ -->
+    <div class="rekap-content">
+        <!-- Auto-refresh bar -->
+        <div class="auto-refresh-bar">
+            <div class="auto-refresh-bar-inner" id="refresh-bar"></div>
+        </div>
+
+        <!-- Stats + Filters -->
+        <div class="rekap-controls">
+            <div class="rekap-stats-row" id="rekap-stats">
+                <!-- Populated by JS -->
+            </div>
+            <div class="rekap-filter-bar">
+                <select class="form-control" style="width:auto;min-width:160px;font-size:0.82rem;" id="filter-rekap-branch" onchange="renderRekap()">
+                    <option value="all">Semua Cabang</option>
+                    <option value="Pinrang">Cabang Pinrang</option>
+                    <option value="Parepare">Cabang Parepare</option>
+                </select>
+                <select class="form-control" style="width:auto;min-width:140px;font-size:0.82rem;" id="filter-rekap-room" onchange="renderRekap()">
+                    <option value="">Semua Ruangan</option>
+                </select>
+                <button class="btn btn-secondary btn-sm" onclick="window.print()" style="font-size:0.78rem;">
+                    🖨️ Cetak
+                </button>
+                <button class="btn btn-secondary btn-sm" onclick="refreshData()" style="font-size:0.78rem;">
+                    🔄 Refresh
+                </button>
+            </div>
+        </div>
+
+        <!-- Current time display -->
+        <div style="text-align:center; margin-bottom:1rem;">
+            <span style="font-size:1.8rem; font-weight:800; color:var(--text-primary);" id="current-clock">--:--:--</span>
+            <div style="font-size:0.78rem; color:var(--text-muted); margin-top:0.2rem;">Waktu saat ini (WITA)</div>
+        </div>
+
+        <!-- Schedule Table -->
+        <div class="rekap-table-card">
+            <div class="rekap-table-wrap">
+                <table class="rekap-table">
+                    <thead>
+                        <tr>
+                            <th style="width:40px;">No</th>
+                            <th>Master Teacher</th>
+                            <th>Waktu</th>
+                            <th>Mata Pelajaran</th>
+                            <th>Kelas / Rombel</th>
+                            <th>Keterangan</th>
+                            <th>Ruangan</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rekap-tbody">
+                        <tr><td colspan="8" class="text-center text-muted" style="padding:3rem;">
+                            Memuat data...
+                        </td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="rekap-footer">
+            Halaman ini otomatis refresh setiap 60 detik · Brain Academia Center © 2026
+            <br>Hanya menampilkan jadwal yang telah <strong>disetujui</strong> oleh pengajar
+        </div>
+    </div>
+</div>
+
+<script src="data.js"></script>
+<script src="firebase-config.js"></script>
+<script src="firebase.js"></script>
+<script src="rekap.js"></script>
+</body>
+</html>

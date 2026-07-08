@@ -131,8 +131,12 @@
             Lanjutkan →
         </button>
 
+        <a href="rekap.html" class="btn btn-outline btn-block" style="margin-top:0.75rem;font-size:0.82rem;border-radius:12px;color:var(--ba-red);border-color:var(--ba-red);">
+            📋 Lihat Rekap Jadwal Hari Ini
+        </a>
+
         <p style="font-size:.75rem;color:var(--text-muted);text-align:center;margin-top:1.25rem;">
-            Sistem internal Brain Academia. Hanya untuk pengajar & admin.
+            Sistem internal Brain Academia. Hanya untuk pengajar &amp; admin.
         </p>
     </div>
 
@@ -336,7 +340,7 @@ function setupPinInputs() {
 function submitAdminLogin(e) {
     e.preventDefault();
     const pw = document.getElementById('admin-password').value;
-    if (pw === ADMIN_PASSWORD) {
+    if (pw === getAdminPassword()) {
         Session.save('admin');
         showToast('Selamat datang, Admin!', 'success');
         setTimeout(() => window.location.href = 'admin.html', 600);

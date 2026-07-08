@@ -245,6 +245,14 @@ const FireDB = {
         DB.updateScheduleStatus(id, status, rejectReason);
     },
 
+    async updateSchedule(id, updates) {
+        updates.updatedAt = new Date().toISOString();
+        if (!await this.isReady()) { DB.updateSchedule(id, updates); return; }
+        const { updateDoc, doc } = window._FS;
+        await updateDoc(doc(_db, FS_COLLECTIONS.schedules, id), updates);
+        DB.updateSchedule(id, updates);
+    },
+
     async deleteSchedule(id) {
         if (!await this.isReady()) { DB.deleteSchedule(id); return; }
         const { deleteDoc, doc } = window._FS;

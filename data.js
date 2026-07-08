@@ -482,6 +482,40 @@ const DB = {
         if (!db.templates) db.templates = DEFAULT_TEMPLATES;
         db.templates = db.templates.filter(t => t.id !== id);
         this.flush();
+    },
+
+    // Mata Pelajaran (Mapel)
+    getMapelList() {
+        const db = this.get();
+        if (!db.mapelList || db.mapelList.length === 0) {
+            // Seed from MAPEL_LIST if not yet persisted
+            db.mapelList = [...MAPEL_LIST];
+            this.flush();
+        }
+        return db.mapelList;
+    },
+    addMapel(name) {
+        const db = this.get();
+        if (!db.mapelList) db.mapelList = [...MAPEL_LIST];
+        const trimmed = name.trim().toUpperCase();
+        if (!trimmed) return false;
+        if (db.mapelList.map(m => m.toUpperCase()).includes(trimmed)) return false; // duplicate
+        db.mapelList.push(trimmed);
+        db.mapelList.sort();
+        this.flush();
+        // Sync MAPEL_LIST global
+        MAPEL_LIST.length = 0;
+        db.mapelList.forEach(m => MAPEL_LIST.push(m));
+        return true;
+    },
+    deleteMapel(name) {
+        const db = this.get();
+        if (!db.mapelList) db.mapelList = [...MAPEL_LIST];
+        db.mapelList = db.mapelList.filter(m => m !== name);
+        this.flush();
+        // Sync MAPEL_LIST global
+        MAPEL_LIST.length = 0;
+        db.mapelList.forEach(m => MAPEL_LIST.push(m));
     }
 };
 

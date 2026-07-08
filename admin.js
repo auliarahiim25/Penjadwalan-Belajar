@@ -157,7 +157,63 @@ function renderAdminSettings() {
     } else {
         settingsAvatar.innerHTML = profile.name.charAt(0).toUpperCase();
     }
+
+    renderMapelList();
 }
+
+// ────────────────────────────────────────────────────────────────────
+//  KELOLA MATA PELAJARAN
+// ────────────────────────────────────────────────────────────────────
+function renderMapelList() {
+    const container = document.getElementById('mapel-list-container');
+    if (!container) return;
+
+    // Ensure MAPEL_LIST is synced from persistent storage
+    const list = DB.getMapelList();
+    MAPEL_LIST.length = 0;
+    list.forEach(m => MAPEL_LIST.push(m));
+
+    if (list.length === 0) {
+        container.innerHTML = `<div style="color:var(--text-muted);font-size:.85rem;padding:1rem 0;">Belum ada mata pelajaran. Tambahkan di atas.</div>`;
+        return;
+    }
+
+    container.innerHTML = list.map(mapel => {
+        const safeName = mapel.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+        return `
+            <div style="display:inline-flex;align-items:center;gap:6px;background:var(--bg-sidebar);border:1px solid var(--border-color);border-radius:20px;padding:4px 10px 4px 12px;font-size:.8rem;font-weight:600;">
+                <span>${mapel}</span>
+                <button onclick="deleteMapelItem('${safeName}')" title="Hapus ${mapel}"
+                    style="background:none;border:none;cursor:pointer;color:var(--ba-red);font-size:.85rem;padding:0 2px;line-height:1;display:flex;align-items:center;">✕</button>
+            </div>`;
+    }).join('');
+}
+
+function addMapelFromInput() {
+    const input = document.getElementById('new-mapel-input');
+    if (!input) return;
+    const val = input.value.trim().toUpperCase();
+    if (!val) {
+        showToast('Nama mata pelajaran tidak boleh kosong.', 'warning');
+        return;
+    }
+    const added = DB.addMapel(val);
+    if (!added) {
+        showToast(`"${val}" sudah ada dalam daftar.`, 'warning');
+        return;
+    }
+    input.value = '';
+    renderMapelList();
+    showToast(`Mata pelajaran "${val}" berhasil ditambahkan.`, 'success');
+}
+
+function deleteMapelItem(name) {
+    if (!confirm(`Yakin ingin menghapus mata pelajaran "${name}"?\nMata pelajaran ini tidak akan muncul di pilihan form jadwal.`)) return;
+    DB.deleteMapel(name);
+    renderMapelList();
+    showToast(`Mata pelajaran "${name}" berhasil dihapus.`, 'success');
+}
+
 
 async function submitAdminSettings(e) {
     e.preventDefault();
@@ -722,6 +778,16 @@ function populateAssignTeacherSelect() {
     if (cur) sel.value = cur;
 }
 
+function getDynamicRombelList() {
+    let templates = DB.getTemplates();
+    if (adminCurrentBranch !== 'all') {
+        templates = templates.filter(t => t.branch === adminCurrentBranch || !t.branch);
+    }
+    let uniqueKelas = [...new Set(templates.map(t => t.rombel))].filter(Boolean);
+    uniqueKelas.sort((a, b) => getRombelGradeWeight(a) - getRombelGradeWeight(b));
+    return uniqueKelas.length > 0 ? uniqueKelas : KELAS_LIST;
+}
+
 function populateAssignSelects() {
     populateAssignTeacherSelect();
 
@@ -753,7 +819,8 @@ function populateAssignSelects() {
     const rombelSel = document.getElementById('assign-rombel');
     if (rombelSel) {
         rombelSel.innerHTML = '<option value="">— Pilih Kelas —</option>';
-        KELAS_LIST.forEach(k => {
+        const currentRombelList = getDynamicRombelList();
+        currentRombelList.forEach(k => {
             const opt = document.createElement('option');
             opt.value = k;
             opt.textContent = k;
@@ -1065,7 +1132,8 @@ function populateEditScheduleSelects() {
     // Populate KELAS
     const rombelSel = document.getElementById('edit-sched-rombel');
     rombelSel.innerHTML = '<option value="">— Pilih Kelas —</option>';
-    KELAS_LIST.forEach(k => {
+    const currentRombelList = getDynamicRombelList();
+    currentRombelList.forEach(k => {
         const opt = document.createElement('option');
         opt.value = k;
         opt.textContent = k;
@@ -1568,6 +1636,11 @@ function renderAll() {
         }
     }
 
+    // Sync MAPEL_LIST from persistent storage
+    const persistedMapel = DB.getMapelList();
+    MAPEL_LIST.length = 0;
+    persistedMapel.forEach(m => MAPEL_LIST.push(m));
+
     renderAll();
     populateSchedulesFilter();
 })();
@@ -1587,6 +1660,27 @@ async function pushToFirebase() {
 // PETA JADWAL (TEMPLATE) CRUD
 // ==========================================
 
+function renderSessionInputs(presetSessions = {}) {
+    const container = document.getElementById('tmpl-sessions-container');
+    if (!container) return;
+    container.innerHTML = '';
+    const daysNodes = document.querySelectorAll('input[name="tmpl-days"]:checked');
+    if (daysNodes.length === 0) return;
+    
+    daysNodes.forEach(cb => {
+        const day = cb.value;
+        const val = presetSessions[day] || '';
+        const html = `
+            <div class="form-group" style="margin-top:0.75rem; padding:0.75rem; background:var(--bg-body); border-radius:8px; border:1px solid var(--border-color);">
+                <label class="form-label" style="color:var(--primary-color);">🕒 Sesi / Waktu ${day} (Format: HH:MM-HH:MM)</label>
+                <input type="text" id="tmpl-sessions-${day}" class="form-control" placeholder="15:00-16:30, 17:00-18:30" value="${val}" required>
+                <small style="color:var(--text-muted); display:block; margin-top:4px;">Pisahkan dengan koma jika ada lebih dari 1 sesi.</small>
+            </div>
+        `;
+        container.insertAdjacentHTML('beforeend', html);
+    });
+}
+
 function openTemplateModal(tmplId = null) {
     const form = document.getElementById('form-template');
     form.reset();
@@ -1601,6 +1695,7 @@ function openTemplateModal(tmplId = null) {
 
     // Clear checkboxes
     document.querySelectorAll('input[name="tmpl-days"]').forEach(cb => cb.checked = false);
+    renderSessionInputs();
 
     if (tmplId) {
         const tmpl = DB.getTemplates().find(t => t.id === tmplId);
@@ -1610,13 +1705,15 @@ function openTemplateModal(tmplId = null) {
             const branchSelect = document.getElementById('tmpl-branch');
             if (branchSelect && tmpl.branch) branchSelect.value = tmpl.branch;
             document.getElementById('tmpl-rombel').value = tmpl.rombel;
-            document.getElementById('tmpl-sessions').value = tmpl.sessions.map(s => `${s.start}-${s.end}`).join(', ');
             document.getElementById('tmpl-room').value = tmpl.room;
             
+            let presetSessions = {};
             tmpl.days.forEach(day => {
                 const cb = document.querySelector(`input[name="tmpl-days"][value="${day}"]`);
                 if (cb) cb.checked = true;
+                presetSessions[day] = tmpl.sessions.map(s => `${s.start}-${s.end}`).join(', ');
             });
+            renderSessionInputs(presetSessions);
         }
     }
     openModal('modal-template');
@@ -1639,33 +1736,43 @@ function submitTemplate(e) {
         return;
     }
     
-    const sessionsStr = document.getElementById('tmpl-sessions').value.trim();
-    const sessionsArr = sessionsStr.split(',').map(s => s.trim()).filter(s => s);
-    const sessions = [];
-    
-    for (let i = 0; i < sessionsArr.length; i++) {
-        const parts = sessionsArr[i].split('-');
-        if (parts.length !== 2) {
-            showToast('Format sesi tidak valid. Gunakan HH:MM-HH:MM', 'error');
-            return;
+    const templatesToSave = [];
+    for (let day of days) {
+        const sessionsStr = document.getElementById(`tmpl-sessions-${day}`).value.trim();
+        const sessionsArr = sessionsStr.split(',').map(s => s.trim()).filter(s => s);
+        const sessions = [];
+        
+        for (let i = 0; i < sessionsArr.length; i++) {
+            const parts = sessionsArr[i].split('-');
+            if (parts.length !== 2) {
+                showToast(`Format sesi tidak valid pada hari ${day}. Gunakan HH:MM-HH:MM`, 'error');
+                return;
+            }
+            sessions.push({
+                start: parts[0].trim(),
+                end: parts[1].trim(),
+                label: `Sesi ${i+1}`
+            });
         }
-        sessions.push({
-            start: parts[0].trim(),
-            end: parts[1].trim(),
-            label: `Sesi ${i+1}`
+        
+        templatesToSave.push({
+            branch,
+            rombel,
+            days: [day], // Split into 1 template per day
+            sessions,
+            room
         });
     }
     
-    const tmpl = {
-        id: id || undefined,
-        branch,
-        rombel,
-        days,
-        sessions,
-        room
-    };
+    // If editing, delete the old one
+    if (id) {
+        DB.deleteTemplate(id);
+    }
     
-    DB.saveTemplate(tmpl);
+    templatesToSave.forEach(tmpl => {
+        DB.saveTemplate(tmpl);
+    });
+    
     closeModal('modal-template');
     showToast('Peta jadwal berhasil disimpan', 'success');
     renderTimetable();

@@ -438,6 +438,27 @@
             </div>
         </div>
 
+            <!-- ─── Kelola Mata Pelajaran ─── -->
+            <div class="card" style="max-width:600px; margin-top:2rem;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem;">
+                    <div>
+                        <div class="page-title" style="font-size:1.1rem; margin-bottom:.2rem;">📚 Kelola Mata Pelajaran</div>
+                        <div class="page-subtitle" style="font-size:.82rem;">Tambah atau hapus mata pelajaran yang tersedia di form jadwal</div>
+                    </div>
+                </div>
+
+                <div style="display:flex; gap:.75rem; margin-bottom:1.25rem;">
+                    <input type="text" id="new-mapel-input" class="form-control" placeholder="Nama mata pelajaran baru..." style="flex:1;" oninput="this.value = this.value.toUpperCase()" onkeydown="if(event.key==='Enter'){event.preventDefault();addMapelFromInput();}">
+                    <button class="btn btn-primary" onclick="addMapelFromInput()" style="white-space:nowrap;">➕ Tambah</button>
+                </div>
+
+                <div id="mapel-list-container" style="display:flex; flex-wrap:wrap; gap:.5rem; max-height:320px; overflow-y:auto; padding:4px 0;">
+                    <!-- Rendered by JS -->
+                </div>
+            </div>
+
+        </div>
+
     </main>
 </div>
 
@@ -629,18 +650,16 @@
             <div class="form-group">
                 <label class="form-label">Hari (Pilih lebih dari satu)</label>
                 <div style="display:flex; flex-wrap:wrap; gap:10px;" id="tmpl-days-container">
-                    <label><input type="checkbox" name="tmpl-days" value="Senin"> Senin</label>
-                    <label><input type="checkbox" name="tmpl-days" value="Selasa"> Selasa</label>
-                    <label><input type="checkbox" name="tmpl-days" value="Rabu"> Rabu</label>
-                    <label><input type="checkbox" name="tmpl-days" value="Kamis"> Kamis</label>
-                    <label><input type="checkbox" name="tmpl-days" value="Jumat"> Jumat</label>
-                    <label><input type="checkbox" name="tmpl-days" value="Sabtu"> Sabtu</label>
+                    <label><input type="checkbox" name="tmpl-days" value="Senin" onchange="renderSessionInputs()"> Senin</label>
+                    <label><input type="checkbox" name="tmpl-days" value="Selasa" onchange="renderSessionInputs()"> Selasa</label>
+                    <label><input type="checkbox" name="tmpl-days" value="Rabu" onchange="renderSessionInputs()"> Rabu</label>
+                    <label><input type="checkbox" name="tmpl-days" value="Kamis" onchange="renderSessionInputs()"> Kamis</label>
+                    <label><input type="checkbox" name="tmpl-days" value="Jumat" onchange="renderSessionInputs()"> Jumat</label>
+                    <label><input type="checkbox" name="tmpl-days" value="Sabtu" onchange="renderSessionInputs()"> Sabtu</label>
                 </div>
             </div>
-            <div class="form-group">
-                <label class="form-label">Sesi / Waktu (Format: HH:MM-HH:MM)</label>
-                <input type="text" id="tmpl-sessions" class="form-control" placeholder="15:00-16:30, 17:00-18:30" required>
-                <small style="color:var(--text-muted); display:block; margin-top:4px;">Pisahkan dengan koma jika ada lebih dari 1 sesi per hari.</small>
+            <div id="tmpl-sessions-container">
+                <!-- Sesi input per hari akan di-generate di sini -->
             </div>
             <div class="form-group">
                 <label class="form-label">Ruangan Default</label>

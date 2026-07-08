@@ -1310,6 +1310,26 @@ function getRombelLevelClass(rombel) {
     return '';
 }
 
+function getRombelGradeWeight(rombel) {
+    if (!rombel) return 99;
+    const r = rombel.toUpperCase();
+    if (r.includes('SD')) {
+        const match = r.match(/(\d+)\s*SD/);
+        return match ? parseInt(match[1], 10) : 6;
+    }
+    if (r.includes('SMP')) {
+        const match = r.match(/(\d+)\s*SMP/);
+        return match ? parseInt(match[1], 10) : 9;
+    }
+    if (r.includes('SMA')) {
+        const match = r.match(/(\d+)\s*SMA/);
+        return match ? parseInt(match[1], 10) : 12;
+    }
+    if (r.includes('SNBT')) return 13;
+    if (r.startsWith('MC')) return 14;
+    return 99;
+}
+
 function renderTimetable() {
     const weekDates = getWeekDates(currentTimetableWeekStart);
     const dayNames = weekDates.map(d => getDayNameFromDate(d));
@@ -1336,11 +1356,18 @@ function renderTimetable() {
     const allSchedules = getFilteredSchedules();
     const allTeachers  = getFilteredTeachers();
 
-    // Filter templates by room
+    // Filter templates by room and branch, then sort by grade
     let templates = DB.getTemplates();
+    
+    if (adminCurrentBranch !== 'all') {
+        templates = templates.filter(t => t.branch === adminCurrentBranch || !t.branch);
+    }
+    
     if (curRoom) {
         templates = templates.filter(t => t.room.split(',').map(r=>r.trim()).includes(curRoom));
     }
+    
+    templates.sort((a, b) => getRombelGradeWeight(a.rombel) - getRombelGradeWeight(b.rombel));
 
     const tbody = document.getElementById('timetable-tbody');
     let html = '';
@@ -1566,6 +1593,12 @@ function openTemplateModal(tmplId = null) {
     document.getElementById('tmpl-id').value = '';
     document.getElementById('template-modal-title').textContent = 'Tambah Rombel Baru';
 
+    // Default branch selection
+    const branchSelect = document.getElementById('tmpl-branch');
+    if (branchSelect) {
+        branchSelect.value = (adminCurrentBranch !== 'all') ? adminCurrentBranch : 'Pinrang';
+    }
+
     // Clear checkboxes
     document.querySelectorAll('input[name="tmpl-days"]').forEach(cb => cb.checked = false);
 
@@ -1574,6 +1607,8 @@ function openTemplateModal(tmplId = null) {
         if (tmpl) {
             document.getElementById('template-modal-title').textContent = 'Edit Rombel';
             document.getElementById('tmpl-id').value = tmpl.id;
+            const branchSelect = document.getElementById('tmpl-branch');
+            if (branchSelect && tmpl.branch) branchSelect.value = tmpl.branch;
             document.getElementById('tmpl-rombel').value = tmpl.rombel;
             document.getElementById('tmpl-sessions').value = tmpl.sessions.map(s => `${s.start}-${s.end}`).join(', ');
             document.getElementById('tmpl-room').value = tmpl.room;
@@ -1591,6 +1626,8 @@ function submitTemplate(e) {
     e.preventDefault();
     
     const id = document.getElementById('tmpl-id').value;
+    const branchSelect = document.getElementById('tmpl-branch');
+    const branch = branchSelect ? branchSelect.value : 'Pinrang';
     const rombel = document.getElementById('tmpl-rombel').value.trim();
     const room = document.getElementById('tmpl-room').value.trim();
     
@@ -1621,6 +1658,7 @@ function submitTemplate(e) {
     
     const tmpl = {
         id: id || undefined,
+        branch,
         rombel,
         days,
         sessions,

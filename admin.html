@@ -341,6 +341,7 @@
                     <select class="form-control" style="width:auto;min-width:160px;" id="filter-timetable-room" onchange="renderTimetable()">
                         <option value="">Semua Ruangan</option>
                     </select>
+                    <button class="btn btn-outline btn-sm" onclick="sendAllDraftsThisWeek()" style="color:var(--warning);border-color:var(--warning);">📤 Kirim Draft Minggu Ini</button>
                     <button class="btn btn-primary btn-sm" onclick="openTemplateModal()">➕ Tambah Rombel Baru</button>
                     <button class="btn btn-secondary btn-sm" onclick="renderTimetable()">🔄 Refresh</button>
                 </div>
@@ -457,6 +458,25 @@
                 </div>
             </div>
 
+            <!-- ─── Kelola Ruangan ─── -->
+            <div class="card" style="max-width:600px; margin-top:2rem;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem;">
+                    <div>
+                        <div class="page-title" style="font-size:1.1rem; margin-bottom:.2rem;">🚪 Kelola Ruangan</div>
+                        <div class="page-subtitle" style="font-size:.82rem;" id="ruangan-branch-subtitle">Tambah atau hapus ruangan untuk cabang yang dipilih</div>
+                    </div>
+                </div>
+
+                <div style="display:flex; gap:.75rem; margin-bottom:1.25rem;">
+                    <input type="text" id="new-ruangan-input" class="form-control" placeholder="Nama ruangan baru..." style="flex:1;" oninput="this.value = this.value.toUpperCase()" onkeydown="if(event.key==='Enter'){event.preventDefault();addRuanganFromInput();}">
+                    <button class="btn btn-primary" onclick="addRuanganFromInput()" style="white-space:nowrap;">➕ Tambah</button>
+                </div>
+
+                <div id="ruangan-list-container" style="display:flex; flex-wrap:wrap; gap:.5rem; max-height:320px; overflow-y:auto; padding:4px 0;">
+                    <!-- Rendered by JS -->
+                </div>
+            </div>
+
         </div>
 
     </main>
@@ -538,10 +558,15 @@
                 <textarea id="assign-notes" class="form-control" rows="2"
                     placeholder="Catatan tambahan untuk MT..."></textarea>
             </div>
+            
+            <div class="form-group" style="margin-top:0.5rem; display:flex; align-items:center; gap:0.5rem;">
+                <input type="checkbox" id="assign-as-draft" checked>
+                <label for="assign-as-draft" style="margin:0; font-weight:600; font-size:0.85rem; color:var(--text-secondary); cursor:pointer;">Simpan sebagai Draft (Belum dikirim ke MT)</label>
+            </div>
 
             <div style="display:flex;gap:.75rem;justify-content:flex-end;margin-top:.5rem;">
                 <button type="button" class="btn btn-outline" onclick="closeModal('modal-assign')">Batal</button>
-                <button type="submit" class="btn btn-primary">📤 Kirim Jadwal ke MT</button>
+                <button type="submit" class="btn btn-primary">💾 Simpan Jadwal</button>
             </div>
         </form>
     </div>

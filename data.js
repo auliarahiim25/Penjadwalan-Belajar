@@ -101,6 +101,12 @@ const KET_LIST = [
 
 const RUANGAN_LIST = ["101", "102", "201", "202", "203"];
 
+// Ruangan per cabang (default)
+const RUANGAN_BY_BRANCH = {
+    Pinrang:  ["101", "102", "201", "202", "203"],
+    Parepare: ["R1", "R2", "R3", "R4"]
+};
+
 // --- Default Templates ---
 const DEFAULT_TEMPLATES = [
     {
@@ -423,7 +429,7 @@ const DB = {
     addSchedule(schedule) {
         const db = this.get();
         schedule.id = 'sched-' + Date.now();
-        schedule.status = 'pending';
+        schedule.status = schedule.status || 'pending';
         schedule.createdAt = new Date().toISOString();
         db.schedules.push(schedule);
         this.flush();
@@ -516,6 +522,55 @@ const DB = {
         // Sync MAPEL_LIST global
         MAPEL_LIST.length = 0;
         db.mapelList.forEach(m => MAPEL_LIST.push(m));
+    },
+
+    // Ruangan per Cabang
+    getRuanganList(branch) {
+        const db = this.get();
+        if (!db.ruanganByBranch) {
+            db.ruanganByBranch = JSON.parse(JSON.stringify(RUANGAN_BY_BRANCH));
+            this.flush();
+        }
+        if (!db.ruanganByBranch[branch]) {
+            db.ruanganByBranch[branch] = [];
+        }
+        return db.ruanganByBranch[branch];
+    },
+    getAllRuangan() {
+        const db = this.get();
+        if (!db.ruanganByBranch) {
+            db.ruanganByBranch = JSON.parse(JSON.stringify(RUANGAN_BY_BRANCH));
+            this.flush();
+        }
+        // Return flat unique list for backward compat
+        const all = new Set();
+        Object.values(db.ruanganByBranch).forEach(arr => arr.forEach(r => all.add(r)));
+        return [...all];
+    },
+    addRuangan(branch, name) {
+        const db = this.get();
+        if (!db.ruanganByBranch) db.ruanganByBranch = JSON.parse(JSON.stringify(RUANGAN_BY_BRANCH));
+        if (!db.ruanganByBranch[branch]) db.ruanganByBranch[branch] = [];
+        const trimmed = name.trim();
+        if (!trimmed) return false;
+        if (db.ruanganByBranch[branch].map(r => r.toUpperCase()).includes(trimmed.toUpperCase())) return false;
+        db.ruanganByBranch[branch].push(trimmed);
+        this.flush();
+        this._syncRuanganGlobal();
+        return true;
+    },
+    deleteRuangan(branch, name) {
+        const db = this.get();
+        if (!db.ruanganByBranch) db.ruanganByBranch = JSON.parse(JSON.stringify(RUANGAN_BY_BRANCH));
+        if (!db.ruanganByBranch[branch]) return;
+        db.ruanganByBranch[branch] = db.ruanganByBranch[branch].filter(r => r !== name);
+        this.flush();
+        this._syncRuanganGlobal();
+    },
+    _syncRuanganGlobal() {
+        const all = this.getAllRuangan();
+        RUANGAN_LIST.length = 0;
+        all.forEach(r => RUANGAN_LIST.push(r));
     }
 };
 
@@ -546,6 +601,7 @@ const Session = {
 // --- Utility ---
 function getStatusBadge(status) {
     const map = {
+        draft:    { label: 'Draft',    cls: 'badge-draft' },
         pending:  { label: 'Menunggu', cls: 'badge-pending' },
         approved: { label: 'Disetujui', cls: 'badge-approved' },
         rejected: { label: 'Ditolak',  cls: 'badge-rejected' }

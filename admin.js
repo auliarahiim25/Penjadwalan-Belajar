@@ -23,7 +23,20 @@ function changeAdminBranch(branch) {
     const label = branch === 'all' ? 'Semua Cabang' : 'Cabang ' + branch;
     const el = document.getElementById('header-branch-label');
     if (el) el.textContent = 'Admin — ' + label;
+    
+    // Sinkronkan global ruangan list jika pindah cabang
+    if (branch !== 'all') {
+        const branchRooms = DB.getRuanganList(branch);
+        RUANGAN_LIST.length = 0;
+        branchRooms.forEach(r => RUANGAN_LIST.push(r));
+    } else {
+        const allRooms = DB.getAllRuangan();
+        RUANGAN_LIST.length = 0;
+        allRooms.forEach(r => RUANGAN_LIST.push(r));
+    }
+    
     renderAll();
+    renderRuanganList(); // Update UI kelola ruangan jika di halaman setting
 }
 
 function getFilteredTeachers() {
@@ -159,6 +172,7 @@ function renderAdminSettings() {
     }
 
     renderMapelList();
+    renderRuanganList();
 }
 
 // ────────────────────────────────────────────────────────────────────
@@ -212,6 +226,71 @@ function deleteMapelItem(name) {
     DB.deleteMapel(name);
     renderMapelList();
     showToast(`Mata pelajaran "${name}" berhasil dihapus.`, 'success');
+}
+
+// ────────────────────────────────────────────────────────────────────
+//  KELOLA RUANGAN
+// ────────────────────────────────────────────────────────────────────
+function renderRuanganList() {
+    const container = document.getElementById('ruangan-list-container');
+    const subtitle = document.getElementById('ruangan-branch-subtitle');
+    if (!container) return;
+
+    if (adminCurrentBranch === 'all') {
+        container.innerHTML = `<div style="color:var(--text-muted);font-size:.85rem;padding:1rem 0;">Pilih cabang spesifik (Pinrang/Parepare) di menu atas untuk mengelola ruangan.</div>`;
+        if (subtitle) subtitle.textContent = 'Pilih cabang spesifik untuk mengelola ruangan';
+        document.getElementById('new-ruangan-input').disabled = true;
+        return;
+    }
+
+    document.getElementById('new-ruangan-input').disabled = false;
+    if (subtitle) subtitle.textContent = `Kelola ruangan untuk Cabang ${adminCurrentBranch}`;
+
+    const list = DB.getRuanganList(adminCurrentBranch);
+
+    if (list.length === 0) {
+        container.innerHTML = `<div style="color:var(--text-muted);font-size:.85rem;padding:1rem 0;">Belum ada ruangan. Tambahkan di atas.</div>`;
+        return;
+    }
+
+    container.innerHTML = list.map(ruangan => {
+        const safeName = ruangan.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+        return `
+            <div style="display:inline-flex;align-items:center;gap:6px;background:var(--bg-sidebar);border:1px solid var(--border-color);border-radius:20px;padding:4px 10px 4px 12px;font-size:.8rem;font-weight:600;">
+                <span>${ruangan}</span>
+                <button onclick="deleteRuanganItem('${safeName}')" title="Hapus ${ruangan}"
+                    style="background:none;border:none;cursor:pointer;color:var(--ba-red);font-size:.85rem;padding:0 2px;line-height:1;display:flex;align-items:center;">✕</button>
+            </div>`;
+    }).join('');
+}
+
+function addRuanganFromInput() {
+    if (adminCurrentBranch === 'all') {
+        showToast('Pilih cabang spesifik terlebih dahulu.', 'warning');
+        return;
+    }
+    const input = document.getElementById('new-ruangan-input');
+    if (!input) return;
+    const val = input.value.trim().toUpperCase();
+    if (!val) {
+        showToast('Nama ruangan tidak boleh kosong.', 'warning');
+        return;
+    }
+    const added = DB.addRuangan(adminCurrentBranch, val);
+    if (!added) {
+        showToast(`Ruangan "${val}" sudah ada dalam daftar.`, 'warning');
+        return;
+    }
+    input.value = '';
+    renderRuanganList();
+    showToast(`Ruangan "${val}" berhasil ditambahkan.`, 'success');
+}
+
+function deleteRuanganItem(name) {
+    if (!confirm(`Yakin ingin menghapus ruangan "${name}"?\nRuangan ini tidak akan muncul di pilihan form jadwal.`)) return;
+    DB.deleteRuangan(adminCurrentBranch, name);
+    renderRuanganList();
+    showToast(`Ruangan "${name}" berhasil dihapus.`, 'success');
 }
 
 
@@ -937,9 +1016,12 @@ async function submitAssign(e) {
         if (!confirm(msg)) return;
     }
 
-    await FireDB.addSchedule({ teacherId, date, startTime, endTime, room, subject, rombel, notes, ket });
+    const isDraft = document.getElementById('assign-as-draft') ? document.getElementById('assign-as-draft').checked : true;
+    const status = isDraft ? 'draft' : 'pending';
+
+    await FireDB.addSchedule({ teacherId, date, startTime, endTime, room, subject, rombel, notes, ket, status });
     closeModal('modal-assign');
-    showToast('Jadwal berhasil di-assign!', 'success', `${teacher.name} — ${dayName} ${formatDateIndo(date)}, ${startTime}–${endTime}`);
+    showToast(isDraft ? 'Jadwal tersimpan sebagai Draft!' : 'Jadwal berhasil dikirim!', 'success', `${teacher.name} — ${dayName} ${formatDateIndo(date)}, ${startTime}–${endTime}`);
     renderAll();
 }
 
@@ -1478,7 +1560,8 @@ function renderTimetable() {
                 if (matchedScheds.length > 0) {
                     const s = matchedScheds[0];
                     const t = allTeachers.find(x => x.id === s.teacherId);
-                    const statusClass = s.status === 'approved' ? 'tt-slot-approved' :
+                    const statusClass = s.status === 'draft' ? 'tt-slot-draft' :
+                                       s.status === 'approved' ? 'tt-slot-approved' :
                                        s.status === 'rejected' ? 'tt-slot-rejected' : 'tt-slot-pending';
 
                     // Check room conflict for this slot
@@ -1506,7 +1589,7 @@ function renderTimetable() {
                     }
 
                     html += `<td class="tt-day-cell">
-                        <div class="tt-slot-chip tt-slot-assigned ${statusClass}${conflictClass}" title="${t?.name||'?'} • ${s.subject}">
+                        <div class="tt-slot-chip tt-slot-assigned ${statusClass}${conflictClass}" title="${t?.name||'?'} • ${s.subject}" onclick="editSchedule('${s.id}')" style="cursor:pointer;">
                             <span class="tt-chip-teacher">${t?.name||'?'}</span>
                             <span style="font-size:.6rem;">${s.subject || '–'}</span>
                             ${hasConflict ? '<span style="font-size:.6rem;color:#ef4444;">⚠️ Bentrok!</span>' : ''}
@@ -1580,6 +1663,40 @@ function quickAssignFromTemplate(rombel, dateStr, startTime, endTime, room) {
     updateAvailHint();
     openModal('modal-assign');
     document.getElementById('assign-teacher').focus();
+}
+
+async function sendAllDraftsThisWeek() {
+    const weekDates = getWeekDates(currentTimetableWeekStart);
+    const drafts = getFilteredSchedules().filter(s => s.status === 'draft' && weekDates.includes(s.date));
+    
+    if (drafts.length === 0) {
+        showToast('Tidak ada jadwal draft di minggu ini.', 'info');
+        return;
+    }
+    
+    if (!confirm(`Kirim ${drafts.length} jadwal draft ke MT sekarang? MT akan melihat jadwal ini sebagai "Menunggu" dan bisa meresponnya.`)) return;
+    
+    const btn = event.target;
+    if (btn) {
+        btn.dataset.oldText = btn.innerHTML;
+        btn.innerHTML = 'Mengirim...';
+        btn.disabled = true;
+    }
+    
+    try {
+        for (const s of drafts) {
+            await FireDB.updateScheduleStatus(s.id, 'pending');
+        }
+        showToast(`${drafts.length} jadwal berhasil dikirim ke MT!`, 'success');
+        renderAll();
+    } catch (e) {
+        showToast('Gagal mengirim jadwal.', 'error');
+    } finally {
+        if (btn) {
+            btn.innerHTML = btn.dataset.oldText;
+            btn.disabled = false;
+        }
+    }
 }
 
 // ────────────────────────────────────────────────────────────────────

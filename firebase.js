@@ -223,7 +223,7 @@ const FireDB = {
     async addSchedule(schedule) {
         if (!await this.isReady()) { return DB.addSchedule(schedule); }
         const { addDoc, collection } = window._FS;
-        schedule.status = 'pending';
+        schedule.status = schedule.status || 'pending';
         schedule.createdAt = new Date().toISOString();
         const ref = await addDoc(collection(_db, FS_COLLECTIONS.schedules), schedule);
         schedule.id = ref.id;

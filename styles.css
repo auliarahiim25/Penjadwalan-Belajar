@@ -207,6 +207,7 @@ select.form-control option { background: var(--bg-card); color: var(--text-prima
     text-transform: uppercase;
     letter-spacing: .04em;
 }
+.badge-draft    { background: rgba(108,117,125,0.2); color: #6c757d; }
 .badge-pending  { background: var(--warning-light);  color: #92400e; }
 .badge-approved { background: var(--success-light);  color: #065f46; }
 .badge-rejected { background: var(--danger-light);   color: #991b1b; }
@@ -1480,10 +1481,16 @@ tbody tr:hover { background: rgba(0, 0, 0, 0.01); }
 }
 
 /* Status variants */
+.tt-slot-draft {
+    background: #f3f4f6;
+    color: #4b5563;
+    border: 1px solid #d1d5db;
+}
+.tt-slot-draft:hover { background: #e5e7eb; }
 .tt-slot-pending {
     background: #fef3c7;
     color: #92400e;
-    border-color: #f59e0b;
+    border: 1px solid #fde68a;
 }
 .tt-slot-pending:hover { background: #fde68a; }
 

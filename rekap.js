@@ -12,8 +12,8 @@ function getTodayStr() {
     return `${yyyy}-${mm}-${dd}`;
 }
 
-function getTodayLabel() {
-    const now = new Date();
+function getTodayLabel(dateStr) {
+    const now = dateStr ? new Date(dateStr) : new Date();
     const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
     const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
                     'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
@@ -50,7 +50,14 @@ function getSubjectBadgeStyle(subject) {
 }
 
 // ── Get live status of a schedule ──
-function getScheduleLiveStatus(startTime, endTime) {
+function getScheduleLiveStatus(scheduleDateStr, startTime, endTime) {
+    const todayStr = getTodayStr();
+    if (scheduleDateStr < todayStr) {
+        return { label: '✓ Selesai', cls: 'status-done-dot' };
+    } else if (scheduleDateStr > todayStr) {
+        return { label: '○ Akan Datang', cls: 'status-upcoming-dot' };
+    }
+
     const now = new Date();
     const hh = now.getHours();
     const mm = now.getMinutes();
@@ -87,12 +94,16 @@ function populateRoomFilter() {
 
 // ── Main render ──
 function renderRekap() {
-    const todayStr = getTodayStr();
+    const dateInput = document.getElementById('filter-rekap-date');
+    if (dateInput && !dateInput.value) {
+        dateInput.value = getTodayStr();
+    }
+    const targetDateStr = dateInput ? dateInput.value : getTodayStr();
     const branchFilter = document.getElementById('filter-rekap-branch')?.value || 'all';
     const roomFilter = document.getElementById('filter-rekap-room')?.value || '';
 
     // Update date label
-    document.getElementById('rekap-date-label').textContent = getTodayLabel();
+    document.getElementById('rekap-date-label').textContent = getTodayLabel(targetDateStr);
 
     // Get all data
     let teachers = DB.getTeachers();
@@ -101,10 +112,10 @@ function renderRekap() {
     }
     const teacherIds = teachers.map(t => t.id);
 
-    // Filter schedules: today + approved + matching branch
+    // Filter schedules: target date + (approved or pending) + matching branch
     let schedules = DB.getSchedules().filter(s =>
-        s.date === todayStr &&
-        s.status === 'approved' &&
+        s.date === targetDateStr &&
+        (s.status === 'approved' || s.status === 'pending') &&
         teacherIds.includes(s.teacherId)
     );
 
@@ -123,7 +134,7 @@ function renderRekap() {
     const uniqueTeachers = new Set(schedules.map(s => s.teacherId)).size;
     const uniqueRooms = new Set(schedules.flatMap(s => s.room ? s.room.split(',').map(r => r.trim()) : [])).size;
     const activeNow = schedules.filter(s => {
-        const status = getScheduleLiveStatus(s.startTime, s.endTime);
+        const status = getScheduleLiveStatus(s.date, s.startTime, s.endTime);
         return status.cls === 'status-active-dot';
     }).length;
 
@@ -178,8 +189,13 @@ function renderRekap() {
         groupScheds.forEach(s => {
             const t = teachers.find(x => x.id === s.teacherId);
             const initials = t ? t.name.split(' ').map(w => w[0]).join('').slice(0, 2) : '?';
-            const liveStatus = getScheduleLiveStatus(s.startTime, s.endTime);
+            const liveStatus = getScheduleLiveStatus(s.date, s.startTime, s.endTime);
             const subjectStyle = getSubjectBadgeStyle(s.subject);
+
+            let statusHtml = `<span class="${liveStatus.cls}">${liveStatus.label}</span>`;
+            if (s.status === 'pending') {
+                statusHtml = `<span style="display:inline-flex;align-items:center;gap:0.35rem;font-size:0.72rem;font-weight:700;color:#92400E;background:#FEF3C7;padding:0.2rem 0.6rem;border-radius:99px;margin-bottom:4px;">⏳ Menunggu</span><br>` + statusHtml;
+            }
 
             html += `
             <tr>
@@ -216,7 +232,7 @@ function renderRekap() {
                     🏫 ${s.room || '—'}
                 </td>
                 <td>
-                    <span class="${liveStatus.cls}">${liveStatus.label}</span>
+                    ${statusHtml}
                 </td>
             </tr>`;
         });

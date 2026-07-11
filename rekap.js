@@ -77,6 +77,22 @@ function getScheduleLiveStatus(scheduleDateStr, startTime, endTime) {
     }
 }
 
+// ── Get score for rombel sorting ──
+function getRombelScore(rombel) {
+    if (!rombel) return 999;
+    const r = rombel.toUpperCase();
+    let score = 0;
+    if (r.includes('SD')) score = 100;
+    else if (r.includes('SMP')) score = 200;
+    else if (r.includes('SMA')) score = 300;
+    else if (r.includes('SNBT') || r.includes('UTBK')) score = 400;
+    else score = 500;
+    
+    const match = r.match(/(\d+)/);
+    if (match) score += parseInt(match[1]);
+    return score;
+}
+
 // ── Populate room filter ──
 function populateRoomFilter() {
     const sel = document.getElementById('filter-rekap-room');
@@ -158,59 +174,50 @@ function renderRekap() {
 
     if (schedules.length === 0) {
         tbody.innerHTML = `
-        <tr><td colspan="8">
+        <tr><td colspan="4">
             <div class="rekap-empty">
                 <div class="rekap-empty-icon">📭</div>
-                <div class="rekap-empty-title">Tidak Ada Jadwal Hari Ini</div>
-                <div class="rekap-empty-desc">Belum ada jadwal yang disetujui untuk hari ini${branchFilter !== 'all' ? ' di cabang ' + branchFilter : ''}.</div>
+                <div class="rekap-empty-title">Tidak Ada Jadwal</div>
+                <div class="rekap-empty-desc">Belum ada jadwal untuk tanggal ini${branchFilter !== 'all' ? ' di cabang ' + branchFilter : ''}.</div>
             </div>
         </td></tr>`;
         return;
     }
 
-    // Group schedules by time session for visual grouping
-    const timeGroups = {};
+    // Group schedules by rombel
+    const rombelGroups = {};
     schedules.forEach(s => {
-        const key = `${s.startTime}–${s.endTime}`;
-        if (!timeGroups[key]) timeGroups[key] = [];
-        timeGroups[key].push(s);
+        const key = s.rombel || 'Lainnya';
+        if (!rombelGroups[key]) rombelGroups[key] = [];
+        rombelGroups[key].push(s);
     });
 
-    let html = '';
-    let no = 1;
+    const sortedRombelKeys = Object.keys(rombelGroups).sort((a, b) => getRombelScore(a) - getRombelScore(b));
 
-    Object.entries(timeGroups).forEach(([timeKey, groupScheds]) => {
-        // Session divider
+    let html = '';
+
+    sortedRombelKeys.forEach(rombelKey => {
+        const groupScheds = rombelGroups[rombelKey];
+        // Sort inside group by time
+        groupScheds.sort((a, b) => a.startTime.localeCompare(b.startTime) || a.endTime.localeCompare(b.endTime));
+
         html += `
         <tr class="session-divider-row">
-            <td colspan="8">🕐 Sesi ${timeKey} (${groupScheds.length} jadwal)</td>
+            <td colspan="4" style="background:var(--bg-sidebar);color:var(--ba-red);font-size:0.85rem;font-weight:800;border-bottom:2px solid var(--ba-red) !important;padding:0.5rem 1.25rem !important;">
+                👥 Kelas: ${rombelKey} (${groupScheds.length} jadwal)
+            </td>
         </tr>`;
 
         groupScheds.forEach(s => {
             const t = teachers.find(x => x.id === s.teacherId);
             const initials = t ? t.name.split(' ').map(w => w[0]).join('').slice(0, 2) : '?';
-            const liveStatus = getScheduleLiveStatus(s.date, s.startTime, s.endTime);
             const subjectStyle = getSubjectBadgeStyle(s.subject);
 
-            let statusHtml = `<span class="${liveStatus.cls}">${liveStatus.label}</span>`;
-            if (s.status === 'pending') {
-                statusHtml = `<span style="display:inline-flex;align-items:center;gap:0.35rem;font-size:0.72rem;font-weight:700;color:#92400E;background:#FEF3C7;padding:0.2rem 0.6rem;border-radius:99px;margin-bottom:4px;">⏳ Menunggu</span><br>` + statusHtml;
-            }
+            // If pending, add a small indication
+            const pendingMark = s.status === 'pending' ? `<span style="font-size:0.65rem;background:#FEF3C7;color:#92400E;padding:2px 6px;border-radius:12px;margin-left:6px;font-weight:bold;">⏳ Menunggu</span>` : '';
 
             html += `
             <tr>
-                <td style="text-align:center;color:var(--text-muted);font-weight:700;font-size:0.78rem;">${no++}</td>
-                <td>
-                    <div class="rekap-teacher-cell">
-                        <div class="rekap-teacher-avatar" style="background:${t?.avatarBg || '#E2E8F0'};color:${t?.avatarColor || '#475569'};">
-                            ${initials}
-                        </div>
-                        <div>
-                            <div class="rekap-teacher-name">${t?.name || '—'}</div>
-                            ${t?.branch ? `<div style="font-size:0.68rem;color:var(--text-muted);font-weight:500;">📍 ${t.branch}</div>` : ''}
-                        </div>
-                    </div>
-                </td>
                 <td>
                     <div class="rekap-time-cell">
                         <span class="time-icon">🕒</span>
@@ -218,21 +225,23 @@ function renderRekap() {
                     </div>
                 </td>
                 <td>
+                    <div class="rekap-teacher-cell">
+                        <div class="rekap-teacher-avatar" style="background:${t?.avatarBg || '#E2E8F0'};color:${t?.avatarColor || '#475569'};">
+                            ${initials}
+                        </div>
+                        <div>
+                            <div class="rekap-teacher-name">${t?.name || '—'} ${pendingMark}</div>
+                            ${t?.branch ? `<div style="font-size:0.68rem;color:var(--text-muted);font-weight:500;">📍 ${t.branch}</div>` : ''}
+                        </div>
+                    </div>
+                </td>
+                <td>
                     <span class="rekap-subject-badge" style="${subjectStyle}">
                         ${s.subject || '—'}
                     </span>
                 </td>
-                <td class="rekap-rombel-cell">
-                    👥 ${s.rombel || '—'}
-                </td>
-                <td class="rekap-ket-cell">
-                    ${s.ket ? `🏷️ ${s.ket}` : '<span style="color:var(--text-muted);">—</span>'}
-                </td>
                 <td class="rekap-room-cell">
                     🏫 ${s.room || '—'}
-                </td>
-                <td>
-                    ${statusHtml}
                 </td>
             </tr>`;
         });

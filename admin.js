@@ -1054,6 +1054,19 @@ function renderSchedulesList() {
     const filterStatus  = document.getElementById('filter-sched-status')?.value  || '';
 
     let list = getFilteredSchedules();
+
+    // Filter by week
+    const weekDates = getWeekDates(currentSchedWeekStart);
+    const sundayDate = adjustDateDays(weekDates[5], 1);
+    const fullWeek = [...weekDates, sundayDate];
+    list = list.filter(s => fullWeek.includes(s.date));
+
+    // Update label
+    const startStr = formatDateIndo(weekDates[0]);
+    const endStr   = formatDateIndo(weekDates[5]);
+    const labelEl = document.getElementById('admin-sched-week-label');
+    if (labelEl) labelEl.textContent = `${startStr} – ${endStr}`;
+
     if (filterTeacher) list = list.filter(s => s.teacherId === filterTeacher);
     if (filterDay)     list = list.filter(s => getDayNameFromDate(s.date) === filterDay);
     if (filterStatus)  list = list.filter(s => s.status === filterStatus);
@@ -1173,7 +1186,11 @@ function renderWeeklyGridSchedulesAdmin() {
 
 function changeAdminSchedWeek(offset) {
     currentSchedWeekStart = adjustDateDays(currentSchedWeekStart, offset * 7);
-    renderWeeklyGridSchedulesAdmin();
+    if (adminSchedulesView === 'list') {
+        renderSchedulesList();
+    } else {
+        renderWeeklyGridSchedulesAdmin();
+    }
 }
 
 function populateSchedulesFilter() {
@@ -1381,6 +1398,11 @@ function openAddTeacherModal() {
     document.getElementById('btn-save-teacher').textContent = '💾 Simpan';
     document.getElementById('edit-teacher-id').value = '';
     document.getElementById('form-teacher').reset();
+    if (adminCurrentBranch !== 'all') {
+        document.getElementById('mt-branch').value = adminCurrentBranch;
+    } else {
+        document.getElementById('mt-branch').value = 'Pinrang';
+    }
     openModal('modal-teacher');
 }
 
@@ -1393,6 +1415,7 @@ function editTeacher(id) {
     document.getElementById('mt-name').value  = t.name;
     document.getElementById('mt-email').value = t.email || '';
     document.getElementById('mt-pin').value   = t.pin;
+    document.getElementById('mt-branch').value = t.branch || 'Pinrang';
     document.getElementById('mt-subj-sd').value   = (t.subjects.SD   || []).join(', ');
     document.getElementById('mt-subj-smp').value  = (t.subjects.SMP  || []).join(', ');
     document.getElementById('mt-subj-sma').value  = (t.subjects.SMA  || []).join(', ');
@@ -1406,6 +1429,7 @@ async function submitTeacherForm(e) {
     const name  = document.getElementById('mt-name').value.trim().toUpperCase();
     const email = document.getElementById('mt-email').value.trim() || '-';
     const pin   = document.getElementById('mt-pin').value.trim();
+    const branch = document.getElementById('mt-branch').value;
 
     const parseSubs = val => val.split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
     const subjects  = {
@@ -1421,11 +1445,11 @@ async function submitTeacherForm(e) {
     if (id) {
         // Edit existing
         const existing = DB.getTeacher(id);
-        await FireDB.saveTeacher({ ...existing, name, email, pin, subjects });
+        await FireDB.saveTeacher({ ...existing, name, email, pin, branch, subjects });
         showToast('Data MT berhasil diperbarui.', 'success');
     } else {
         // Add new
-        await FireDB.addTeacher({ name, email, pin, subjects, avatarBg: rnd[0], avatarColor: rnd[1] });
+        await FireDB.addTeacher({ name, email, pin, branch, subjects, avatarBg: rnd[0], avatarColor: rnd[1] });
         showToast('Master Teacher baru berhasil ditambahkan!', 'success');
     }
 

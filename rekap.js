@@ -201,47 +201,51 @@ function renderRekap() {
         // Sort inside group by time
         groupScheds.sort((a, b) => a.startTime.localeCompare(b.startTime) || a.endTime.localeCompare(b.endTime));
 
-        html += `
-        <tr class="session-divider-row">
-            <td colspan="4" style="background:var(--bg-sidebar);color:var(--ba-red);font-size:0.85rem;font-weight:800;border-bottom:2px solid var(--ba-red) !important;padding:0.5rem 1.25rem !important;">
-                👥 Kelas: ${rombelKey} (${groupScheds.length} jadwal)
-            </td>
-        </tr>`;
+        // Background color logic for the Kelas column (similar to image)
+        let rowBgClass = '';
+        if (rombelKey.toUpperCase().includes('SD')) rowBgClass = 'background: rgba(226, 232, 240, 0.6);';
+        else if (rombelKey.toUpperCase().includes('SMP')) rowBgClass = 'background: rgba(219, 234, 254, 0.6);';
+        else if (rombelKey.toUpperCase().includes('SMA')) rowBgClass = 'background: rgba(254, 243, 199, 0.6);';
+        else if (rombelKey.toUpperCase().includes('UTBK')) rowBgClass = 'background: rgba(237, 233, 254, 0.6);';
 
-        groupScheds.forEach(s => {
+        groupScheds.forEach((s, index) => {
             const t = teachers.find(x => x.id === s.teacherId);
-            const initials = t ? t.name.split(' ').map(w => w[0]).join('').slice(0, 2) : '?';
             const subjectStyle = getSubjectBadgeStyle(s.subject);
-
-            // If pending, add a small indication
             const pendingMark = s.status === 'pending' ? `<span style="font-size:0.65rem;background:#FEF3C7;color:#92400E;padding:2px 6px;border-radius:12px;margin-left:6px;font-weight:bold;">⏳ Menunggu</span>` : '';
+            
+            // For the first row, we render the 'KELAS' cell with rowspan
+            html += `<tr>`;
+            if (index === 0) {
+                html += `
+                <td rowspan="${groupScheds.length}" style="text-align:center; font-weight:800; font-size:1rem; border-right:1px solid var(--border-color); ${rowBgClass}">
+                    ${rombelKey}
+                </td>`;
+            }
 
             html += `
-            <tr>
-                <td>
-                    <div class="rekap-time-cell">
-                        <span class="time-icon">🕒</span>
+                <td style="text-align:center; border-right:1px solid var(--border-color);">
+                    <div style="font-weight:700; color:var(--ba-red); font-size:0.85rem;">
                         ${s.startTime} – ${s.endTime}
                     </div>
                 </td>
-                <td>
-                    <div class="rekap-teacher-cell">
-                        <div class="rekap-teacher-avatar" style="background:${t?.avatarBg || '#E2E8F0'};color:${t?.avatarColor || '#475569'};">
-                            ${initials}
-                        </div>
+                <td style="border-right:1px solid var(--border-color);">
+                    <div style="display:flex; flex-direction:column; gap:4px;">
                         <div>
-                            <div class="rekap-teacher-name">${t?.name || '—'} ${pendingMark}</div>
-                            ${t?.branch ? `<div style="font-size:0.68rem;color:var(--text-muted);font-weight:500;">📍 ${t.branch}</div>` : ''}
+                            <span class="rekap-subject-badge" style="${subjectStyle}">
+                                ${s.subject || '—'}
+                            </span>
                         </div>
+                        <div style="font-weight:700; color:var(--text-primary); font-size:0.9rem;">
+                            👨‍🏫 ${t?.name || '—'} ${pendingMark}
+                        </div>
+                        ${t?.branch ? `<div style="font-size:0.65rem;color:var(--text-muted);font-weight:600;">📍 ${t.branch}</div>` : ''}
                     </div>
                 </td>
-                <td>
-                    <span class="rekap-subject-badge" style="${subjectStyle}">
-                        ${s.subject || '—'}
-                    </span>
+                <td style="text-align:center; font-weight:700; color:var(--text-primary); border-right:1px solid var(--border-color);">
+                    ${s.room || '—'}
                 </td>
-                <td class="rekap-room-cell">
-                    🏫 ${s.room || '—'}
+                <td style="text-align:center; font-size:0.8rem; font-weight:600; color:var(--text-secondary);">
+                    ${s.ket || '—'}
                 </td>
             </tr>`;
         });

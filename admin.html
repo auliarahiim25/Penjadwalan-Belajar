@@ -721,16 +721,21 @@
         <form id="form-edit-schedule" onsubmit="submitEditSchedule(event)">
             <input type="hidden" id="edit-sched-id">
 
-            <!-- Read-only info -->
+            <!-- Info Tanggal & Status -->
             <div class="card card-sm mb-2" style="margin-bottom:1rem; background:var(--bg-sidebar); border:1px solid var(--border-color); padding:0.75rem 1rem;">
                 <div style="display:flex; gap:1.5rem; flex-wrap:wrap; font-size:0.85rem;">
-                    <div><span style="color:var(--text-secondary);">Master Teacher:</span> <strong id="edit-sched-teacher-name">—</strong></div>
                     <div><span style="color:var(--text-secondary);">Tanggal:</span> <strong id="edit-sched-date-label">—</strong></div>
                     <div><span style="color:var(--text-secondary);">Status:</span> <span id="edit-sched-status-badge"></span></div>
                 </div>
             </div>
 
             <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Master Teacher</label>
+                    <select id="edit-sched-teacher" class="form-control" required>
+                        <option value="">— Pilih MT —</option>
+                    </select>
+                </div>
                 <div class="form-group">
                     <label class="form-label">Mata Pelajaran</label>
                     <select id="edit-sched-subject" class="form-control" required>

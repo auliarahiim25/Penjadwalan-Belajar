@@ -1218,6 +1218,16 @@ async function deleteSchedule(id) {
 //  EDIT SCHEDULE (Admin can edit approved/pending/rejected schedules)
 // ────────────────────────────────────────────────────────────────────
 function populateEditScheduleSelects() {
+    // Populate MASTER TEACHER
+    const teacherSel = document.getElementById('edit-sched-teacher');
+    teacherSel.innerHTML = '<option value="">— Pilih MT —</option>';
+    getFilteredTeachers().forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t.id;
+        opt.textContent = t.name;
+        teacherSel.appendChild(opt);
+    });
+
     // Populate MAPEL
     const subSel = document.getElementById('edit-sched-subject');
     subSel.innerHTML = '<option value="">— Pilih Mapel —</option>';
@@ -1273,10 +1283,19 @@ function editSchedule(id) {
     // Fill hidden ID
     document.getElementById('edit-sched-id').value = s.id;
 
-    // Read-only info
-    document.getElementById('edit-sched-teacher-name').textContent = teacher ? teacher.name : '?';
+    // Info display
     document.getElementById('edit-sched-date-label').textContent = `${dayName}, ${dateFormatted}`;
     document.getElementById('edit-sched-status-badge').innerHTML = getStatusBadge(s.status);
+
+    // Set current teacher in dropdown
+    const teacherSel = document.getElementById('edit-sched-teacher');
+    if (s.teacherId && !Array.from(teacherSel.options).some(o => o.value === s.teacherId)) {
+        const opt = document.createElement('option');
+        opt.value = s.teacherId;
+        opt.textContent = teacher ? teacher.name : s.teacherId;
+        teacherSel.appendChild(opt);
+    }
+    teacherSel.value = s.teacherId || '';
 
     // Ensure current values exist in dropdowns (in case they were custom)
     const subSel = document.getElementById('edit-sched-subject');
@@ -1326,6 +1345,7 @@ async function submitEditSchedule(e) {
     e.preventDefault();
 
     const id = document.getElementById('edit-sched-id').value;
+    const teacherId = document.getElementById('edit-sched-teacher').value;
     const subject = document.getElementById('edit-sched-subject').value.trim();
     const rombel = document.getElementById('edit-sched-rombel').value.trim();
     const ket = document.getElementById('edit-sched-ket').value;
@@ -1333,12 +1353,17 @@ async function submitEditSchedule(e) {
     const startTime = document.getElementById('edit-sched-start-time').value;
     const endTime = document.getElementById('edit-sched-end-time').value;
 
+    if (!teacherId) {
+        showToast('Pilih Master Teacher terlebih dahulu.', 'warning');
+        return;
+    }
+
     if (startTime >= endTime) {
         showToast('Jam selesai harus setelah jam mulai.', 'warning');
         return;
     }
 
-    const updates = { subject, rombel, ket, room, startTime, endTime };
+    const updates = { teacherId, subject, rombel, ket, room, startTime, endTime };
 
     await FireDB.updateSchedule(id, updates);
     closeModal('modal-edit-schedule');

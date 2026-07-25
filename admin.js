@@ -1637,13 +1637,30 @@ function renderTimetable() {
                         });
                     }
 
-                    html += `<td class="tt-day-cell">
-                        <div class="tt-slot-chip tt-slot-assigned ${statusClass}${conflictClass}" title="${t?.name||'?'} • ${s.subject}" onclick="editSchedule('${s.id}')" style="cursor:pointer;">
-                            <span class="tt-chip-teacher">${t?.name||'?'}</span>
-                            <span style="font-size:.6rem;">${s.subject || '–'}</span>
-                            ${hasConflict ? '<span style="font-size:.6rem;color:#ef4444;">⚠️ Bentrok!</span>' : ''}
-                        </div>
-                    </td>`;
+                    if (s.status === 'rejected') {
+                        const rejectTooltip = s.rejectReason ? ` data-tooltip="Alasan ditolak: ${s.rejectReason}"` : '';
+                        html += `<td class="tt-day-cell">
+                            <div class="tt-slot-chip tt-slot-assigned ${statusClass}${conflictClass}" ${rejectTooltip}>
+                                <div style="display:flex; justify-content:space-between; align-items:center; width:100%; gap:2px;">
+                                    <span class="tt-chip-teacher" style="text-decoration:line-through;">❌ ${t?.name||'?'}</span>
+                                    <div style="display:flex; gap:2px;">
+                                        <button class="sched-chip-delete-btn" onclick="event.stopPropagation(); replaceRejectedSchedule('${s.id}')" title="Ganti MT (Hapus & Assign Baru)">🔄</button>
+                                        <button class="sched-chip-delete-btn" onclick="event.stopPropagation(); deleteSchedule('${s.id}')" title="Hapus Jadwal Ditolak">×</button>
+                                    </div>
+                                </div>
+                                <span style="font-size:.6rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:block;">${s.subject || '–'}</span>
+                                ${hasConflict ? '<span style="font-size:.6rem;color:#ef4444;">⚠️ Bentrok!</span>' : ''}
+                            </div>
+                        </td>`;
+                    } else {
+                        html += `<td class="tt-day-cell">
+                            <div class="tt-slot-chip tt-slot-assigned ${statusClass}${conflictClass}" title="${t?.name||'?'} • ${s.subject}" onclick="editSchedule('${s.id}')" style="cursor:pointer;">
+                                <span class="tt-chip-teacher">${t?.name||'?'}</span>
+                                <span style="font-size:.6rem;">${s.subject || '–'}</span>
+                                ${hasConflict ? '<span style="font-size:.6rem;color:#ef4444;">⚠️ Bentrok!</span>' : ''}
+                            </div>
+                        </td>`;
+                    }
                 } else {
                     // Empty assignable slot
                     html += `<td class="tt-day-cell">
@@ -1689,6 +1706,41 @@ function renderTimetable() {
     } else {
         alertContainer.innerHTML = '';
     }
+}
+
+async function replaceRejectedSchedule(id) {
+    const s = DB.getSchedules().find(sc => sc.id === id);
+    if (!s) return;
+
+    if (!confirm('Hapus jadwal yang ditolak ini dan pilih MT baru?')) return;
+
+    // Delete existing rejected schedule
+    await FireDB.deleteSchedule(id);
+
+    // Open quick assign with existing schedule parameters
+    populateAssignSelects();
+    document.getElementById('assign-teacher').value = '';
+    document.getElementById('assign-date').value = s.date;
+    document.getElementById('assign-start-time').value = s.startTime;
+    document.getElementById('assign-end-time').value = s.endTime;
+    document.getElementById('assign-rombel').value = s.rombel;
+    document.getElementById('assign-subject').value = s.subject || '';
+    document.getElementById('assign-ket').value = s.ket || '';
+    document.getElementById('assign-notes').value = s.notes || '';
+
+    const roomSel = document.getElementById('assign-room');
+    if (s.room) {
+        const firstRoom = s.room.split(',')[0].trim();
+        roomSel.value = firstRoom;
+    }
+
+    const isDraftCb = document.getElementById('assign-as-draft');
+    if (isDraftCb) isDraftCb.checked = true;
+
+    updateAvailHint();
+    openModal('modal-assign');
+    document.getElementById('assign-teacher').focus();
+    showToast('Jadwal ditolak telah dihapus. Silakan pilih MT baru.', 'info');
 }
 
 function quickAssignFromTemplate(rombel, dateStr, startTime, endTime, room) {

@@ -1504,8 +1504,11 @@ tbody tr:hover { background: rgba(0, 0, 0, 0.01); }
 .tt-slot-rejected {
     background: #fee2e2;
     color: #991b1b;
-    border-color: #ef4444;
-    opacity: .7;
+    border-color: #fca5a5;
+    opacity: 1;
+}
+.tt-slot-rejected:hover {
+    background: #fecaca;
 }
 
 /* Conflict highlight */

@@ -1937,7 +1937,7 @@ function openTemplateModal(tmplId = null) {
     openModal('modal-template');
 }
 
-function submitTemplate(e) {
+async function submitTemplate(e) {
     e.preventDefault();
     
     const id = document.getElementById('tmpl-id').value;
@@ -1984,21 +1984,21 @@ function submitTemplate(e) {
     
     // If editing, delete the old one
     if (id) {
-        DB.deleteTemplate(id);
+        await FireDB.deleteTemplate(id);
     }
     
-    templatesToSave.forEach(tmpl => {
-        DB.saveTemplate(tmpl);
-    });
+    for (const tmpl of templatesToSave) {
+        await FireDB.saveTemplate(tmpl);
+    }
     
     closeModal('modal-template');
     showToast('Peta jadwal berhasil disimpan', 'success');
     renderTimetable();
 }
 
-function deleteTemplate(id) {
+async function deleteTemplate(id) {
     if (confirm('Yakin ingin menghapus rombel ini dari peta jadwal?')) {
-        DB.deleteTemplate(id);
+        await FireDB.deleteTemplate(id);
         showToast('Rombel berhasil dihapus', 'success');
         renderTimetable();
     }

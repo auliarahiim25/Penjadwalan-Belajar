@@ -7,7 +7,8 @@
 const FS_COLLECTIONS = {
     teachers:     'teachers',
     availability: 'availability',
-    schedules:    'schedules'
+    schedules:    'schedules',
+    templates:    'templates'
 };
 
 let _db = null;       // Firestore instance
@@ -93,18 +94,32 @@ async function initFirebase() {
 const FireDB = {
     async isReady() { return _fbReady && !_fbError; },
 
-    // ── SEED: push DEFAULT_TEACHERS if Firestore teachers collection is empty ──
+    // ── SEED: push DEFAULT_TEACHERS & DEFAULT_TEMPLATES if Firestore collections are empty ──
     async seedIfEmpty() {
         if (!await this.isReady()) return;
-        const { getDocs, collection } = window._FS;
+        const { getDocs, collection, setDoc, doc } = window._FS;
         const snap = await getDocs(collection(_db, FS_COLLECTIONS.teachers));
         if (snap.empty && typeof DEFAULT_TEACHERS !== 'undefined') {
             console.log('[Firebase] Seeding default teachers…');
             for (const t of DEFAULT_TEACHERS) {
-                const { setDoc, doc } = window._FS;
                 await setDoc(doc(_db, FS_COLLECTIONS.teachers, t.id), t);
             }
-            console.log('[Firebase] Seed complete.');
+            console.log('[Firebase] Teacher seed complete.');
+        }
+
+        const tmplSnap = await getDocs(collection(_db, FS_COLLECTIONS.templates));
+        if (tmplSnap.empty && typeof DEFAULT_TEMPLATES !== 'undefined') {
+            console.log('[Firebase] Seeding default templates…');
+            for (const tmpl of DEFAULT_TEMPLATES) {
+                const { id, ...data } = tmpl;
+                if (id) {
+                    await setDoc(doc(_db, FS_COLLECTIONS.templates, id), data);
+                } else {
+                    const { addDoc } = window._FS;
+                    await addDoc(collection(_db, FS_COLLECTIONS.templates), data);
+                }
+            }
+            console.log('[Firebase] Template seed complete.');
         }
     },
 
@@ -260,6 +275,35 @@ const FireDB = {
         DB.deleteSchedule(id);
     },
 
+    // ── TEMPLATES (PETA JADWAL) ─────────────────────────────────────────────
+    async getTemplates() {
+        if (!await this.isReady()) return DB.getTemplates();
+        const { getDocs, collection } = window._FS;
+        const snap = await getDocs(collection(_db, FS_COLLECTIONS.templates));
+        return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    },
+
+    async saveTemplate(tmpl) {
+        if (!await this.isReady()) { DB.saveTemplate(tmpl); return tmpl; }
+        const { setDoc, doc, addDoc, collection } = window._FS;
+        if (tmpl.id) {
+            const { id, ...data } = tmpl;
+            await setDoc(doc(_db, FS_COLLECTIONS.templates, id), data, { merge: true });
+        } else {
+            const ref = await addDoc(collection(_db, FS_COLLECTIONS.templates), tmpl);
+            tmpl.id = ref.id;
+        }
+        DB.saveTemplate(tmpl);
+        return tmpl;
+    },
+
+    async deleteTemplate(id) {
+        if (!await this.isReady()) { DB.deleteTemplate(id); return; }
+        const { deleteDoc, doc } = window._FS;
+        await deleteDoc(doc(_db, FS_COLLECTIONS.templates, id));
+        DB.deleteTemplate(id);
+    },
+
     // ── AUTHENTICATION ─────────────────────────────────────────────────────────
     async loginWithGoogle() {
         if (!await this.isReady()) return null;
@@ -295,15 +339,17 @@ const FireDB = {
     async syncToLocal() {
         if (!await this.isReady()) return;
         try {
-            const [teachers, availability, schedules] = await Promise.all([
+            const [teachers, availability, schedules, templates] = await Promise.all([
                 this.getTeachers(),
                 this.getAllAvailability(),
-                this.getSchedules()
+                this.getSchedules(),
+                this.getTemplates()
             ]);
             const db = DB.get();
             db.teachers     = teachers;
             db.availability = availability;
             db.schedules    = schedules;
+            db.templates   = templates;
             DB.flush();
             console.log('[Firebase] Local cache synced from Firestore.');
         } catch (err) {
@@ -339,6 +385,15 @@ const FireDB = {
                 await setDoc(doc(_db, FS_COLLECTIONS.schedules, id), data);
             } else {
                 await addDoc(collection(_db, FS_COLLECTIONS.schedules), data);
+            }
+        }
+        // Push templates
+        for (const tmpl of db.templates || []) {
+            const { id, ...data } = tmpl;
+            if (id && !id.startsWith('tmpl-')) {
+                await setDoc(doc(_db, FS_COLLECTIONS.templates, id), data);
+            } else {
+                await addDoc(collection(_db, FS_COLLECTIONS.templates), data);
             }
         }
         _showFbStatus('Upload selesai ✅', 'success');

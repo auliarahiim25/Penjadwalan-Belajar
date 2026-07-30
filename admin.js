@@ -1556,8 +1556,44 @@ function renderTimetable() {
     const allTeachers  = getFilteredTeachers();
 
     // Filter templates by room and branch, then sort by grade
-    let templates = DB.getTemplates();
+    let templates = JSON.parse(JSON.stringify(DB.getTemplates()));
     
+    // Create virtual templates for schedules that don't match any existing template
+    allSchedules.forEach(sched => {
+        if (!weekDates.includes(sched.date)) return; // Only process schedules in current week
+        
+        const dayName = getDayNameFromDate(sched.date);
+        
+        // Check if there is an existing template
+        const hasTemplate = templates.some(t => 
+            t.rombel === sched.rombel && 
+            t.days.includes(dayName) && 
+            t.sessions.some(ses => ses.start === sched.startTime && ses.end === sched.endTime)
+        );
+        
+        if (!hasTemplate) {
+            let vt = templates.find(t => t.isVirtual && t.rombel === sched.rombel && t.room === sched.room);
+            if (!vt) {
+                vt = {
+                    id: 'virtual-' + sched.id,
+                    isVirtual: true,
+                    branch: sched.branch || adminCurrentBranch,
+                    rombel: sched.rombel,
+                    days: [dayName],
+                    sessions: [],
+                    room: sched.room || ''
+                };
+                templates.push(vt);
+            } else if (!vt.days.includes(dayName)) {
+                vt.days.push(dayName);
+            }
+            
+            if (!vt.sessions.some(ses => ses.start === sched.startTime && ses.end === sched.endTime)) {
+                vt.sessions.push({ start: sched.startTime, end: sched.endTime, label: 'Sesi Tambahan' });
+            }
+        }
+    });
+
     if (adminCurrentBranch !== 'all') {
         templates = templates.filter(t => t.branch === adminCurrentBranch || !t.branch);
     }
@@ -1916,7 +1952,7 @@ function openTemplateModal(tmplId = null) {
     renderSessionInputs();
 
     if (tmplId) {
-        const tmpl = DB.getTemplates().find(t => t.id === tmplId);
+        const tmpl = (window._renderedTemplates || DB.getTemplates()).find(t => t.id === tmplId);
         if (tmpl) {
             document.getElementById('template-modal-title').textContent = 'Edit Rombel';
             document.getElementById('tmpl-id').value = tmpl.id;
@@ -1983,7 +2019,7 @@ async function submitTemplate(e) {
     }
     
     // If editing, delete the old one
-    if (id) {
+    if (id && !id.startsWith('virtual-')) {
         await FireDB.deleteTemplate(id);
     }
     
@@ -1997,6 +2033,10 @@ async function submitTemplate(e) {
 }
 
 async function deleteTemplate(id) {
+    if (id.startsWith('virtual-')) {
+        alert('Ini adalah template yang dibuat otomatis dari jadwal. Untuk menghapusnya, silakan hapus jadwal terkait di menu Kelola Jadwal.');
+        return;
+    }
     if (confirm('Yakin ingin menghapus rombel ini dari peta jadwal?')) {
         await FireDB.deleteTemplate(id);
         showToast('Rombel berhasil dihapus', 'success');

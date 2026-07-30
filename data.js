@@ -109,117 +109,77 @@ const RUANGAN_BY_BRANCH = {
 
 // --- Default Templates ---
 const DEFAULT_TEMPLATES = [
-    {
-        id: 'tmpl-mcsgr1',
-        rombel: 'MC-SG R1',
-        days: ['Senin', 'Rabu'],
-        sessions: [{ start: '15:30', end: '17:00', label: '1 Sesi' }],
-        room: '201'
-    },
-    {
-        id: 'tmpl-mcsgr2',
-        rombel: 'MC-SG R2',
-        days: ['Selasa', 'Kamis'],
-        sessions: [{ start: '15:30', end: '17:00', label: '1 Sesi' }],
-        room: '201'
-    },
-    {
-        id: 'tmpl-5sdr1',
-        rombel: '5 SD R1',
-        days: ['Selasa', 'Kamis'],
-        sessions: [
-            { start: '16:00', end: '17:00', label: 'Sesi 1' },
-            { start: '17:15', end: '18:15', label: 'Sesi 2' }
-        ],
-        room: '102'
-    },
-    {
-        id: 'tmpl-6sdr1',
-        rombel: '6 SD R1',
-        days: ['Selasa', 'Kamis', 'Sabtu'],
-        sessions: [
-            { start: '19:00', end: '20:30', label: '1 Sesi' }
-        ],
-        room: '102'
-    },
-    {
-        id: 'tmpl-6sdr2',
-        rombel: '6 SD R2',
-        days: ['Senin', 'Rabu'],
-        sessions: [
-            { start: '13:30', end: '14:30', label: 'Sesi 1' },
-            { start: '14:45', end: '15:45', label: 'Sesi 2' }
-        ],
-        room: '102'
-    },
-    {
-        id: 'tmpl-7smpr1',
-        rombel: '7 SMP R1',
-        days: ['Senin', 'Rabu'],
-        sessions: [
-            { start: '16:00', end: '17:00', label: 'Sesi 1' },
-            { start: '17:15', end: '18:15', label: 'Sesi 2' }
-        ],
-        room: '202'
-    },
-    {
-        id: 'tmpl-8smpr1',
-        rombel: '8 SMP R1',
-        days: ['Senin', 'Jumat'],
-        sessions: [
-            { start: '15:00', end: '16:30', label: '1 Sesi' }
-        ],
-        room: '102'
-    },
-    {
-        id: 'tmpl-9smpr1',
-        rombel: '9 SMP R1',
-        days: ['Senin', 'Jumat'],
-        sessions: [
-            { start: '19:00', end: '20:30', label: '1 Sesi' }
-        ],
-        room: '203'
-    },
-    {
-        id: 'tmpl-10smar1',
-        rombel: '10 SMA R1',
-        days: ['Selasa', 'Kamis'],
-        sessions: [
-            { start: '17:00', end: '18:30', label: 'Sesi 1' },
-            { start: '19:00', end: '20:30', label: 'Sesi 2' }
-        ],
-        room: '202'
-    },
-    {
-        id: 'tmpl-11smar1',
-        rombel: '11 SMA R1',
-        days: ['Rabu', 'Jumat'],
-        sessions: [
-            { start: '17:00', end: '18:30', label: 'Sesi 1' },
-            { start: '19:00', end: '20:30', label: 'Sesi 2' }
-        ],
-        room: '101,202'
-    },
-    {
-        id: 'tmpl-12smar1',
-        rombel: '12 SMA R1',
-        days: ['Senin', 'Kamis'],
-        sessions: [
-            { start: '17:00', end: '18:30', label: 'Sesi 1' },
-            { start: '19:00', end: '20:30', label: 'Sesi 2' }
-        ],
-        room: '101'
-    },
-    {
-        id: 'tmpl-12snbt',
-        rombel: '12 SNBT',
-        days: ['Rabu', 'Jumat'],
-        sessions: [
-            { start: '17:00', end: '18:30', label: 'Sesi 1' },
-            { start: '19:00', end: '20:30', label: 'Sesi 2' }
-        ],
-        room: '101'
-    }
+    // --- PAREPARE BRANCH (Gambar 1) ---
+    // Ruangan 201 (15)
+    { id: 'tmpl-pare-201-senin-1', branch: 'Parepare', rombel: '5 SD R4.01', days: ['Senin'], sessions: [{ start: '16:30', end: '17:30', label: 'Sesi 1' }, { start: '17:45', end: '18:45', label: 'Sesi 2' }], room: '201' },
+    { id: 'tmpl-pare-201-selasa-1', branch: 'Parepare', rombel: '6 SD R4.01', days: ['Selasa'], sessions: [{ start: '16:30', end: '17:30', label: 'Sesi 1' }, { start: '17:45', end: '18:45', label: 'Sesi 2' }], room: '201' },
+    { id: 'tmpl-pare-201-selasa-2', branch: 'Parepare', rombel: '9 SMP R3.01', days: ['Selasa'], sessions: [{ start: '19:00', end: '20:30', label: 'Sesi 1' }], room: '201' },
+    { id: 'tmpl-pare-201-rabu-1', branch: 'Parepare', rombel: '7 SMP R3.01', days: ['Rabu'], sessions: [{ start: '17:15', end: '18:45', label: 'Sesi 1' }, { start: '19:00', end: '20:30', label: 'Sesi 2' }], room: '201' },
+    { id: 'tmpl-pare-201-kamis-1', branch: 'Parepare', rombel: '9 SMP R3.01', days: ['Kamis'], sessions: [{ start: '16:30', end: '18:00', label: 'Sesi 1' }, { start: '19:00', end: '20:30', label: 'Sesi 2' }], room: '201' },
+    { id: 'tmpl-pare-201-jumat-1', branch: 'Parepare', rombel: '5 SD R4.01', days: ['Jumat'], sessions: [{ start: '16:30', end: '17:30', label: 'Sesi 1' }, { start: '17:45', end: '18:45', label: 'Sesi 2' }], room: '201' },
+    { id: 'tmpl-pare-201-sabtu-1', branch: 'Parepare', rombel: '6 SD R4.01', days: ['Sabtu'], sessions: [{ start: '14:00', end: '15:00', label: 'Sesi 1' }, { start: '15:15', end: '16:15', label: 'Sesi 2' }], room: '201' },
+
+    // Ruangan 202 (18)
+    { id: 'tmpl-pare-202-senin-1', branch: 'Parepare', rombel: 'MC-SG R1', days: ['Senin'], sessions: [{ start: '15:00', end: '16:00', label: 'Sesi 1' }], room: '202' },
+    { id: 'tmpl-pare-202-senin-2', branch: 'Parepare', rombel: '7 SMP R3.01', days: ['Senin'], sessions: [{ start: '16:30', end: '18:00', label: 'Sesi 1' }], room: '202' },
+    { id: 'tmpl-pare-202-senin-3', branch: 'Parepare', rombel: '9 SMP R3.02', days: ['Senin'], sessions: [{ start: '18:30', end: '20:00', label: 'Sesi 1' }], room: '202' },
+    { id: 'tmpl-pare-202-selasa-1', branch: 'Parepare', rombel: 'SEMPOA', days: ['Selasa'], sessions: [{ start: '15:00', end: '16:00', label: 'Sesi 1' }], room: '202' },
+    { id: 'tmpl-pare-202-selasa-2', branch: 'Parepare', rombel: '8 SMP R3.01', days: ['Selasa'], sessions: [{ start: '16:30', end: '18:00', label: 'Sesi 1' }, { start: '18:30', end: '20:00', label: 'Sesi 2' }], room: '202' },
+    { id: 'tmpl-pare-202-rabu-1', branch: 'Parepare', rombel: '6 SD R2', days: ['Rabu'], sessions: [{ start: '16:30', end: '17:30', label: 'Sesi 1' }, { start: '17:45', end: '18:45', label: 'Sesi 2' }], room: '202' },
+    { id: 'tmpl-pare-202-rabu-2', branch: 'Parepare', rombel: '9 SMP R3.02', days: ['Rabu'], sessions: [{ start: '19:00', end: '20:30', label: 'Sesi 1' }], room: '202' },
+    { id: 'tmpl-pare-202-kamis-1', branch: 'Parepare', rombel: 'SEMPOA', days: ['Kamis'], sessions: [{ start: '15:00', end: '16:00', label: 'Sesi 1' }], room: '202' },
+    { id: 'tmpl-pare-202-kamis-2', branch: 'Parepare', rombel: '6 SD R2', days: ['Kamis'], sessions: [{ start: '16:30', end: '17:30', label: 'Sesi 1' }, { start: '17:45', end: '18:45', label: 'Sesi 2' }], room: '202' },
+    { id: 'tmpl-pare-202-jumat-1', branch: 'Parepare', rombel: 'MC-SG R1', days: ['Jumat'], sessions: [{ start: '15:00', end: '16:00', label: 'Sesi 1' }], room: '202' },
+    { id: 'tmpl-pare-202-jumat-2', branch: 'Parepare', rombel: '8 SMP R3.01', days: ['Jumat'], sessions: [{ start: '16:30', end: '18:00', label: 'Sesi 1' }], room: '202' },
+    { id: 'tmpl-pare-202-jumat-3', branch: 'Parepare', rombel: '9 SMP R2', days: ['Jumat'], sessions: [{ start: '19:00', end: '20:30', label: 'Sesi 1' }], room: '202' },
+
+    // Ruangan 301 (18)
+    { id: 'tmpl-pare-301-senin-1', branch: 'Parepare', rombel: '10 SMA R4.01', days: ['Senin'], sessions: [{ start: '17:00', end: '18:30', label: 'Sesi 1' }, { start: '19:00', end: '20:30', label: 'Sesi 2' }], room: '301' },
+    { id: 'tmpl-pare-301-selasa-1', branch: 'Parepare', rombel: '12 SMA R4.01', days: ['Selasa'], sessions: [{ start: '17:00', end: '18:30', label: 'Sesi 1' }, { start: '19:00', end: '20:30', label: 'Sesi 2' }], room: '301' },
+    { id: 'tmpl-pare-301-kamis-1', branch: 'Parepare', rombel: '10 SMA R4.01', days: ['Kamis'], sessions: [{ start: '17:00', end: '18:30', label: 'Sesi 1' }, { start: '19:00', end: '20:30', label: 'Sesi 2' }], room: '301' },
+    { id: 'tmpl-pare-301-jumat-1', branch: 'Parepare', rombel: '12 SMA R4.01', days: ['Jumat'], sessions: [{ start: '17:00', end: '18:00', label: 'Sesi 1' }, { start: '19:00', end: '20:30', label: 'Sesi 2' }], room: '301' },
+
+    // Ruangan 302 (18)
+    { id: 'tmpl-pare-302-senin-1', branch: 'Parepare', rombel: '11 SMA R4.01', days: ['Senin'], sessions: [{ start: '17:00', end: '18:30', label: 'Sesi 1' }, { start: '19:00', end: '20:30', label: 'Sesi 2' }], room: '302' },
+    { id: 'tmpl-pare-302-selasa-1', branch: 'Parepare', rombel: '12 SMA R4.02', days: ['Selasa'], sessions: [{ start: '17:00', end: '18:30', label: 'Sesi 1' }, { start: '19:00', end: '20:30', label: 'Sesi 2' }], room: '302' },
+    { id: 'tmpl-pare-302-kamis-1', branch: 'Parepare', rombel: '12 SMA R4.02', days: ['Kamis'], sessions: [{ start: '17:00', end: '18:30', label: 'Sesi 1' }, { start: '19:00', end: '20:30', label: 'Sesi 2' }], room: '302' },
+    { id: 'tmpl-pare-302-jumat-1', branch: 'Parepare', rombel: '11 SMA R4.01', days: ['Jumat'], sessions: [{ start: '17:00', end: '18:00', label: 'Sesi 1' }, { start: '19:00', end: '20:30', label: 'Sesi 2' }], room: '302' },
+
+    // --- PINRANG BRANCH (Gambar 2) ---
+    // Ruangan 101 (25)
+    { id: 'tmpl-pin-101-senin-1', branch: 'Pinrang', rombel: 'MC-SG R2', days: ['Senin'], sessions: [{ start: '16:00', end: '17:00', label: 'Sesi 1' }], room: '101' },
+    { id: 'tmpl-pin-101-senin-2', branch: 'Pinrang', rombel: '12 SMA R4.01', days: ['Senin'], sessions: [{ start: '17:00', end: '18:30', label: 'Sesi 1' }, { start: '19:00', end: '20:30', label: 'Sesi 2' }], room: '101' },
+    { id: 'tmpl-pin-101-selasa-1', branch: 'Pinrang', rombel: 'MC-SG R1', days: ['Selasa'], sessions: [{ start: '16:00', end: '17:00', label: 'Sesi 1' }], room: '101' },
+    { id: 'tmpl-pin-101-selasa-2', branch: 'Pinrang', rombel: '12 SMA R4.02', days: ['Selasa'], sessions: [{ start: '17:00', end: '18:30', label: 'Sesi 1' }, { start: '19:00', end: '20:30', label: 'Sesi 2' }], room: '101' },
+    { id: 'tmpl-pin-101-rabu-1', branch: 'Pinrang', rombel: 'MC-SG R2', days: ['Rabu'], sessions: [{ start: '16:00', end: '17:00', label: 'Sesi 1' }], room: '101' },
+    { id: 'tmpl-pin-101-rabu-2', branch: 'Pinrang', rombel: '11 SMA R4.01', days: ['Rabu'], sessions: [{ start: '17:00', end: '18:30', label: 'Sesi 1' }, { start: '19:00', end: '20:30', label: 'Sesi 2' }], room: '101' },
+    { id: 'tmpl-pin-101-kamis-1', branch: 'Pinrang', rombel: 'MC-SG R1', days: ['Kamis'], sessions: [{ start: '16:00', end: '17:00', label: 'Sesi 1' }], room: '101' },
+    { id: 'tmpl-pin-101-kamis-2', branch: 'Pinrang', rombel: '12 SMA R4.01', days: ['Kamis'], sessions: [{ start: '17:00', end: '18:30', label: 'Sesi 1' }, { start: '19:00', end: '20:30', label: 'Sesi 2' }], room: '101' },
+    { id: 'tmpl-pin-101-jumat-1', branch: 'Pinrang', rombel: '11 SMA R4.01', days: ['Jumat'], sessions: [{ start: '17:00', end: '18:30', label: 'Sesi 1' }, { start: '19:00', end: '20:30', label: 'Sesi 2' }], room: '101' },
+
+    // Ruangan 201 (15)
+    { id: 'tmpl-pin-201-senin-1', branch: 'Pinrang', rombel: '5 SD R4.01', days: ['Senin'], sessions: [{ start: '15:00', end: '16:00', label: 'Sesi 1' }, { start: '16:15', end: '17:15', label: 'Sesi 2' }], room: '201' },
+    { id: 'tmpl-pin-201-senin-2', branch: 'Pinrang', rombel: '9 SMP L3.01', days: ['Senin'], sessions: [{ start: '19:00', end: '20:30', label: 'Sesi 1' }], room: '201' },
+    { id: 'tmpl-pin-201-selasa-1', branch: 'Pinrang', rombel: '6 SD R4.02', days: ['Selasa'], sessions: [{ start: '16:00', end: '17:00', label: 'Sesi 1' }, { start: '17:15', end: '18:15', label: 'Sesi 2' }], room: '201' },
+    { id: 'tmpl-pin-201-selasa-2', branch: 'Pinrang', rombel: '6 SD R4.01', days: ['Selasa'], sessions: [{ start: '19:00', end: '20:00', label: 'Sesi 1' }], room: '201' },
+    { id: 'tmpl-pin-201-rabu-1', branch: 'Pinrang', rombel: '8 SMP L3.01', days: ['Rabu'], sessions: [{ start: '19:00', end: '20:30', label: 'Sesi 1' }], room: '201' },
+    { id: 'tmpl-pin-201-kamis-1', branch: 'Pinrang', rombel: '6 SD R4.02', days: ['Kamis'], sessions: [{ start: '16:00', end: '17:00', label: 'Sesi 1' }, { start: '17:15', end: '18:15', label: 'Sesi 2' }], room: '201' },
+    { id: 'tmpl-pin-201-kamis-2', branch: 'Pinrang', rombel: '6 SD R4.01', days: ['Kamis'], sessions: [{ start: '19:00', end: '20:00', label: 'Sesi 1' }], room: '201' },
+    { id: 'tmpl-pin-201-jumat-1', branch: 'Pinrang', rombel: '8 SMP L3.01', days: ['Jumat'], sessions: [{ start: '17:00', end: '18:30', label: 'Sesi 1' }, { start: '19:00', end: '20:30', label: 'Sesi 2' }], room: '201' },
+    { id: 'tmpl-pin-201-sabtu-1', branch: 'Pinrang', rombel: '6 SD R4.01', days: ['Sabtu'], sessions: [{ start: '13:30', end: '14:30', label: 'Sesi 1' }, { start: '14:45', end: '15:45', label: 'Sesi 2' }], room: '201' },
+
+    // Ruangan 202 (22)
+    { id: 'tmpl-pin-202-senin-1', branch: 'Pinrang', rombel: '7 SMP L3.01', days: ['Senin'], sessions: [{ start: '15:00', end: '16:30', label: 'Sesi 1' }, { start: '16:45', end: '18:15', label: 'Sesi 2' }], room: '202' },
+    { id: 'tmpl-pin-202-selasa-1', branch: 'Pinrang', rombel: 'MC-SG R3', days: ['Selasa'], sessions: [{ start: '16:30', end: '18:00', label: 'Sesi 1' }], room: '202' },
+    { id: 'tmpl-pin-202-selasa-2', branch: 'Pinrang', rombel: '10 SMA R4.01', days: ['Selasa'], sessions: [{ start: '17:00', end: '18:30', label: 'Sesi 1' }, { start: '19:00', end: '20:30', label: 'Sesi 2' }], room: '202' },
+    { id: 'tmpl-pin-202-rabu-1', branch: 'Pinrang', rombel: '7 SMP L3.01', days: ['Rabu'], sessions: [{ start: '15:00', end: '16:30', label: 'Sesi 1' }], room: '202' },
+    { id: 'tmpl-pin-202-kamis-1', branch: 'Pinrang', rombel: 'MC-SG R3', days: ['Kamis'], sessions: [{ start: '16:00', end: '17:00', label: 'Sesi 1' }], room: '202' },
+    { id: 'tmpl-pin-202-kamis-2', branch: 'Pinrang', rombel: '10 SMA R4.01', days: ['Kamis'], sessions: [{ start: '17:00', end: '18:30', label: 'Sesi 1' }, { start: '19:00', end: '20:30', label: 'Sesi 2' }], room: '202' },
+    { id: 'tmpl-pin-202-jumat-1', branch: 'Pinrang', rombel: '12 SMA R4.02', days: ['Jumat'], sessions: [{ start: '17:00', end: '18:30', label: 'Sesi 1' }, { start: '19:00', end: '20:30', label: 'Sesi 2' }], room: '202' },
+
+    // Ruangan 203 (12)
+    { id: 'tmpl-pin-203-jumat-1', branch: 'Pinrang', rombel: '9 SMP L3.01', days: ['Jumat'], sessions: [{ start: '17:00', end: '18:30', label: 'Sesi 1' }, { start: '19:00', end: '20:30', label: 'Sesi 2' }], room: '203' },
+    { id: 'tmpl-pin-203-sabtu-1', branch: 'Pinrang', rombel: '5 SD R4.01', days: ['Sabtu'], sessions: [{ start: '14:30', end: '15:30', label: 'Sesi 1' }, { start: '15:45', end: '16:45', label: 'Sesi 2' }], room: '203' }
 ];
 
 // --- Default Seed Data ---
@@ -463,7 +423,7 @@ const DB = {
     // Templates
     getTemplates() { 
         const db = this.get();
-        if (!db.templates) {
+        if (!db.templates || !db.templates.length) {
             db.templates = DEFAULT_TEMPLATES;
             this.flush();
         }

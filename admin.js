@@ -2004,3 +2004,29 @@ async function deleteTemplate(id) {
     }
 }
 
+async function resetTemplatesToDefault() {
+    if (!confirm('PERINGATAN: Aksi ini akan menghapus semua template yang ada dan menggantinya dengan template default (Gambar 1 & Gambar 2). Lanjutkan?')) return;
+    
+    // Show loading toast
+    showToast('Mereset peta jadwal...', 'info');
+    
+    // Delete all current templates
+    const currentTemplates = DB.getTemplates();
+    for (const t of currentTemplates) {
+        await FireDB.deleteTemplate(t.id);
+    }
+    
+    // Add default templates
+    for (const t of DEFAULT_TEMPLATES) {
+        await FireDB.saveTemplate(t);
+    }
+    
+    // Update local version flag just in case
+    const db = DB.get();
+    db.templateVersion = 2; // match CURRENT_TEMPLATE_VERSION if used
+    DB.flush();
+    
+    showToast('Peta jadwal berhasil direset ke default!', 'success');
+    renderTimetable();
+}
+

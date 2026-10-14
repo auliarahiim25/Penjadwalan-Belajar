@@ -818,6 +818,9 @@ function quickAssignByTeacher(teacherId) {
     document.getElementById('assign-ket').value = '';
     document.getElementById('assign-notes').value = '';
 
+    const recCb = document.getElementById('assign-as-recurring');
+    if (recCb) recCb.checked = true;
+
     updateAvailHint();
     openModal('modal-assign');
 }
@@ -840,6 +843,8 @@ function updatePendingBadge() {
 function openAssignModal() {
     populateAssignSelects();
     document.getElementById('form-assign').reset();
+    const recCb = document.getElementById('assign-as-recurring');
+    if (recCb) recCb.checked = true;
     updateAvailHint();
     openModal('modal-assign');
 }
@@ -1017,9 +1022,10 @@ async function submitAssign(e) {
     }
 
     const isDraft = document.getElementById('assign-as-draft') ? document.getElementById('assign-as-draft').checked : true;
+    const isRecurring = document.getElementById('assign-as-recurring') ? document.getElementById('assign-as-recurring').checked : true;
     const status = isDraft ? 'draft' : 'pending';
 
-    await FireDB.addSchedule({ teacherId, date, startTime, endTime, room, subject, rombel, notes, ket, status });
+    await FireDB.addSchedule({ teacherId, date, startTime, endTime, room, subject, rombel, notes, ket, status, isRecurring });
     closeModal('modal-assign');
     showToast(isDraft ? 'Jadwal tersimpan sebagai Draft!' : 'Jadwal berhasil dikirim!', 'success', `${teacher.name} — ${dayName} ${formatDateIndo(date)}, ${startTime}–${endTime}`);
     renderAll();
@@ -1338,6 +1344,10 @@ function editSchedule(id) {
     document.getElementById('edit-sched-start-time').value = s.startTime || '';
     document.getElementById('edit-sched-end-time').value = s.endTime || '';
 
+    // Recurring checkbox
+    const recCb = document.getElementById('edit-sched-recurring');
+    if (recCb) recCb.checked = !!s.isRecurring;
+
     openModal('modal-edit-schedule');
 }
 
@@ -1363,7 +1373,8 @@ async function submitEditSchedule(e) {
         return;
     }
 
-    const updates = { teacherId, subject, rombel, ket, room, startTime, endTime };
+    const isRecurring = document.getElementById('edit-sched-recurring') ? document.getElementById('edit-sched-recurring').checked : false;
+    const updates = { teacherId, subject, rombel, ket, room, startTime, endTime, isRecurring };
 
     await FireDB.updateSchedule(id, updates);
     closeModal('modal-edit-schedule');
@@ -1684,15 +1695,25 @@ function renderTimetable() {
                                         <button class="sched-chip-delete-btn" onclick="event.stopPropagation(); deleteSchedule('${s.id}')" title="Hapus Jadwal Ditolak">×</button>
                                     </div>
                                 </div>
-                                <span style="font-size:.6rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:block;">${s.subject || '–'}</span>
+                                <div style="display:flex; justify-content:space-between; align-items:center; width:100%; gap:2px;">
+                                    <span style="font-size:.6rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${s.subject || '–'}</span>
+                                    ${s.isRecurring ? '<span class="tt-recurring-badge" title="Jadwal Tetap">Tetap</span>' : ''}
+                                </div>
                                 ${hasConflict ? '<span style="font-size:.6rem;color:#ef4444;">⚠️ Bentrok!</span>' : ''}
                             </div>
                         </td>`;
                     } else {
+                        const recBtnHtml = `<button class="tt-recurring-toggle-btn ${s.isRecurring ? 'is-recurring' : ''}" onclick="event.stopPropagation(); toggleRecurringSchedule('${s.id}')" title="${s.isRecurring ? 'Jadwal Tetap (Klik untuk ubah jadi sekali jalan)' : 'Jadwal Sekali Jalan (Klik untuk jadikan Jadwal Tetap)'}">${s.isRecurring ? '🔁' : '⚪'}</button>`;
                         html += `<td class="tt-day-cell">
-                            <div class="tt-slot-chip tt-slot-assigned ${statusClass}${conflictClass}" title="${t?.name||'?'} • ${s.subject}" onclick="editSchedule('${s.id}')" style="cursor:pointer;">
-                                <span class="tt-chip-teacher">${t?.name||'?'}</span>
-                                <span style="font-size:.6rem;">${s.subject || '–'}</span>
+                            <div class="tt-slot-chip tt-slot-assigned ${statusClass}${conflictClass}" title="${t?.name||'?'} • ${s.subject}${s.isRecurring ? ' (Jadwal Tetap)' : ''}" onclick="editSchedule('${s.id}')" style="cursor:pointer;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; width:100%; gap:2px;">
+                                    <span class="tt-chip-teacher">${t?.name||'?'}</span>
+                                    ${recBtnHtml}
+                                </div>
+                                <div style="display:flex; justify-content:space-between; align-items:center; width:100%; gap:2px;">
+                                    <span style="font-size:.6rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${s.subject || '–'}</span>
+                                    ${s.isRecurring ? '<span class="tt-recurring-badge" title="Jadwal Tetap">Tetap</span>' : ''}
+                                </div>
                                 ${hasConflict ? '<span style="font-size:.6rem;color:#ef4444;">⚠️ Bentrok!</span>' : ''}
                             </div>
                         </td>`;
@@ -1741,6 +1762,46 @@ function renderTimetable() {
         `).join('');
     } else {
         alertContainer.innerHTML = '';
+    }
+
+    // Check if previous week has recurring schedules not yet in current week
+    const bannerContainer = document.getElementById('timetable-recurring-banner');
+    if (bannerContainer) {
+        const prevWeekMonday = adjustDateDays(currentTimetableWeekStart, -7);
+        const prevWeekDates = getWeekDates(prevWeekMonday);
+        const prevRecurring = allSchedules.filter(s => prevWeekDates.includes(s.date) && s.isRecurring && s.status !== 'rejected');
+        const curWeekSchedules = allSchedules.filter(s => weekDates.includes(s.date));
+
+        const missingFromPrev = prevRecurring.filter(ps => {
+            const dayIdx = prevWeekDates.indexOf(ps.date);
+            if (dayIdx === -1) return false;
+            const targetDate = weekDates[dayIdx];
+            return !curWeekSchedules.some(cs =>
+                cs.date === targetDate &&
+                cs.rombel === ps.rombel &&
+                cs.startTime === ps.startTime &&
+                cs.endTime === ps.endTime
+            );
+        });
+
+        if (missingFromPrev.length > 0) {
+            bannerContainer.className = 'timetable-recurring-banner';
+            bannerContainer.innerHTML = `
+                <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap; justify-content:space-between; width:100%;">
+                    <div style="display:flex; align-items:center; gap:0.5rem;">
+                        <span style="font-size:1.2rem;">💡</span>
+                        <span>Ada <b>${missingFromPrev.length} jadwal tetap</b> dari pekan lalu (${formatDateIndo(prevWeekDates[0])} – ${formatDateIndo(prevWeekDates[5])}) yang belum diterapkan di pekan ini.</span>
+                    </div>
+                    <button class="btn btn-primary btn-sm" onclick="applyRecurringFromPreviousWeek()" style="background:#2563eb; border-color:#2563eb; color:#fff; font-weight:700;">
+                        ⚡ Terapkan ke Pekan Ini (${missingFromPrev.length})
+                    </button>
+                </div>
+            `;
+            bannerContainer.classList.remove('hidden');
+        } else {
+            bannerContainer.className = 'hidden';
+            bannerContainer.innerHTML = '';
+        }
     }
 }
 
@@ -1797,6 +1858,9 @@ function quickAssignFromTemplate(rombel, dateStr, startTime, endTime, room) {
     // Auto-detect subject based on rombel level
     document.getElementById('assign-subject').value = '';
 
+    const recCb = document.getElementById('assign-as-recurring');
+    if (recCb) recCb.checked = true;
+
     updateAvailHint();
     openModal('modal-assign');
     document.getElementById('assign-teacher').focus();
@@ -1834,6 +1898,263 @@ async function sendAllDraftsThisWeek() {
             btn.disabled = false;
         }
     }
+}
+
+// ────────────────────────────────────────────────────────────────────
+//  RECURRING SCHEDULES (JADWAL TETAP) ACTIONS
+// ────────────────────────────────────────────────────────────────────
+
+async function toggleRecurringSchedule(id) {
+    const s = DB.getSchedules().find(sc => sc.id === id);
+    if (!s) return;
+    const newStatus = !s.isRecurring;
+    await FireDB.updateSchedule(id, { isRecurring: newStatus });
+    showToast(newStatus ? 'Ditandai sebagai Jadwal Tetap 🔁' : 'Diubah menjadi Jadwal Sekali Jalan ⚪', 'info');
+    renderTimetable();
+}
+
+let currentApplyRecurringContext = null;
+
+function openApplyRecurringModal() {
+    const curWeekDates = getWeekDates(currentTimetableWeekStart);
+    const nextWeekMonday = adjustDateDays(currentTimetableWeekStart, 7);
+    const nextWeekDates = getWeekDates(nextWeekMonday);
+
+    const allSchedules = getFilteredSchedules();
+    const curSchedules = allSchedules.filter(s => curWeekDates.includes(s.date) && s.status !== 'rejected');
+    const recurringSchedules = curSchedules.filter(s => s.isRecurring);
+
+    const sourceLabel = `${formatDateIndo(curWeekDates[0])} – ${formatDateIndo(curWeekDates[5])}`;
+    const targetLabel = `${formatDateIndo(nextWeekDates[0])} – ${formatDateIndo(nextWeekDates[5])}`;
+
+    const sourceEl = document.getElementById('apply-rec-source-week');
+    const targetEl = document.getElementById('apply-rec-target-week');
+    if (sourceEl) sourceEl.textContent = sourceLabel;
+    if (targetEl) targetEl.textContent = targetLabel;
+
+    const countRecEl = document.getElementById('apply-rec-count-recurring');
+    const countAllEl = document.getElementById('apply-rec-count-all');
+    if (countRecEl) countRecEl.textContent = `${recurringSchedules.length} jadwal tetap ditemukan di pekan ini`;
+    if (countAllEl) countAllEl.textContent = `${curSchedules.length} jadwal aktif di pekan ini (akan otomatis ditandai tetap)`;
+
+    const optRec = document.getElementById('apply-rec-opt-recurring');
+    const optAll = document.getElementById('apply-rec-opt-all');
+
+    if (recurringSchedules.length > 0) {
+        if (optRec) { optRec.checked = true; optRec.disabled = false; }
+    } else {
+        if (optAll) optAll.checked = true;
+        if (optRec) optRec.disabled = true;
+        if (countRecEl) countRecEl.textContent = '0 jadwal tetap (gunakan opsi Semua Jadwal di bawah)';
+    }
+
+    currentApplyRecurringContext = {
+        curWeekDates,
+        nextWeekMonday,
+        nextWeekDates,
+        curSchedules,
+        recurringSchedules
+    };
+
+    updateApplyRecurringPreview();
+    openModal('modal-apply-recurring');
+}
+
+function updateApplyRecurringPreview() {
+    if (!currentApplyRecurringContext) return;
+    const { curWeekDates, nextWeekDates, curSchedules, recurringSchedules } = currentApplyRecurringContext;
+    const optRec = document.getElementById('apply-rec-opt-recurring');
+    const isRecurringOnly = optRec ? optRec.checked : true;
+    const selectedSchedules = isRecurringOnly ? recurringSchedules : curSchedules;
+
+    const allTeachers = getFilteredTeachers();
+    const allSchedules = getFilteredSchedules();
+    const nextWeekSchedules = allSchedules.filter(s => nextWeekDates.includes(s.date));
+
+    const previewList = document.getElementById('apply-rec-preview-list');
+    const summarySpan = document.getElementById('apply-rec-preview-summary');
+    const execBtn = document.getElementById('btn-execute-apply-rec');
+
+    if (!previewList) return;
+
+    if (selectedSchedules.length === 0) {
+        previewList.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding:1.5rem;">Tidak ada jadwal di pekan ini untuk diterapkan.</div>';
+        if (summarySpan) summarySpan.textContent = '0 jadwal';
+        if (execBtn) execBtn.disabled = true;
+        return;
+    }
+
+    if (execBtn) execBtn.disabled = false;
+
+    let willAddCount = 0;
+    let willSkipCount = 0;
+
+    const itemsHtml = selectedSchedules.map(s => {
+        const t = allTeachers.find(x => x.id === s.teacherId);
+        const dayIdx = curWeekDates.indexOf(s.date);
+        const targetDate = (dayIdx !== -1) ? nextWeekDates[dayIdx] : adjustDateDays(s.date, 7);
+        const dayName = (dayIdx !== -1) ? ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][dayIdx] : getDayNameFromDate(targetDate);
+
+        // Check if slot in next week is occupied
+        const isOccupied = nextWeekSchedules.some(ns =>
+            ns.date === targetDate &&
+            ns.rombel === s.rombel &&
+            ns.startTime === s.startTime &&
+            ns.endTime === s.endTime
+        );
+
+        if (isOccupied) willSkipCount++;
+        else willAddCount++;
+
+        return `
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 8px; border-bottom:1px solid var(--border-color); ${isOccupied ? 'opacity:0.55; background:var(--bg-sidebar);' : ''}">
+                <div>
+                    <strong>${dayName}</strong>, ${formatDateIndo(targetDate)} · <b>${s.rombel}</b> (${s.startTime}–${s.endTime})
+                    <div style="color:var(--text-secondary); font-size:0.7rem; margin-top:2px;">
+                        👨‍🏫 ${t?.name || '?'} · 📚 ${s.subject || '-'} · 🚪 ${s.room}
+                    </div>
+                </div>
+                <div>
+                    ${isOccupied ? '<span style="color:var(--warning); font-weight:700; font-size:0.7rem; background:#fffbeb; padding:2px 6px; border-radius:4px; border:1px solid #fef3c7;">⚠️ Slot terisi (Lewati)</span>' : '<span style="color:var(--success); font-weight:700; font-size:0.7rem; background:#ecfdf5; padding:2px 6px; border-radius:4px; border:1px solid #d1fae5;">✅ Akan dibuat (Draft)</span>'}
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    previewList.innerHTML = itemsHtml;
+    if (summarySpan) {
+        summarySpan.textContent = `${willAddCount} akan dibuat, ${willSkipCount} dilewati`;
+    }
+}
+
+async function executeApplyRecurringSchedules() {
+    if (!currentApplyRecurringContext) return;
+    const { curWeekDates, nextWeekMonday, nextWeekDates, curSchedules, recurringSchedules } = currentApplyRecurringContext;
+    const optRec = document.getElementById('apply-rec-opt-recurring');
+    const isRecurringOnly = optRec ? optRec.checked : true;
+    const selectedSchedules = isRecurringOnly ? recurringSchedules : curSchedules;
+
+    if (selectedSchedules.length === 0) return;
+
+    const btn = document.getElementById('btn-execute-apply-rec');
+    if (btn) {
+        btn.disabled = true;
+        btn.dataset.oldText = btn.innerHTML;
+        btn.innerHTML = 'Menerapkan...';
+    }
+
+    const allSchedules = DB.getSchedules();
+    let createdCount = 0;
+    let skippedCount = 0;
+
+    try {
+        for (const s of selectedSchedules) {
+            const dayIdx = curWeekDates.indexOf(s.date);
+            const targetDate = (dayIdx !== -1) ? nextWeekDates[dayIdx] : adjustDateDays(s.date, 7);
+
+            const isOccupied = allSchedules.some(ns =>
+                ns.date === targetDate &&
+                ns.rombel === s.rombel &&
+                ns.startTime === s.startTime &&
+                ns.endTime === s.endTime
+            );
+
+            if (isOccupied) {
+                skippedCount++;
+                continue;
+            }
+
+            const newSched = {
+                teacherId: s.teacherId,
+                date: targetDate,
+                startTime: s.startTime,
+                endTime: s.endTime,
+                room: s.room,
+                subject: s.subject,
+                rombel: s.rombel,
+                ket: s.ket || '',
+                notes: s.notes || '',
+                branch: s.branch || adminCurrentBranch,
+                isRecurring: true,
+                status: 'draft' // Draft as requested by user
+            };
+
+            await FireDB.addSchedule(newSched);
+            createdCount++;
+        }
+
+        closeModal('modal-apply-recurring');
+        showToast(`${createdCount} jadwal berhasil diterapkan ke pekan depan sebagai Draft!${skippedCount > 0 ? ` (${skippedCount} dilewati karena slot sudah terisi)` : ''}`, 'success');
+
+        // Navigate to next week so admin can review immediately
+        currentTimetableWeekStart = nextWeekMonday;
+        renderAll();
+
+    } catch (err) {
+        console.error('Error applying recurring schedules:', err);
+        showToast('Terjadi kesalahan saat menerapkan jadwal.', 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = btn.dataset.oldText || '⚡ Terapkan ke Pekan Depan';
+        }
+    }
+}
+
+async function applyRecurringFromPreviousWeek() {
+    const weekDates = getWeekDates(currentTimetableWeekStart);
+    const prevWeekMonday = adjustDateDays(currentTimetableWeekStart, -7);
+    const prevWeekDates = getWeekDates(prevWeekMonday);
+    
+    const allSchedules = getFilteredSchedules();
+    const prevRecurring = allSchedules.filter(s => prevWeekDates.includes(s.date) && s.isRecurring && s.status !== 'rejected');
+    const curWeekSchedules = allSchedules.filter(s => weekDates.includes(s.date));
+    
+    const toApply = prevRecurring.filter(ps => {
+        const dayIdx = prevWeekDates.indexOf(ps.date);
+        if (dayIdx === -1) return false;
+        const targetDate = weekDates[dayIdx];
+        return !curWeekSchedules.some(cs =>
+            cs.date === targetDate &&
+            cs.rombel === ps.rombel &&
+            cs.startTime === ps.startTime &&
+            cs.endTime === ps.endTime
+        );
+    });
+
+    if (toApply.length === 0) {
+        showToast('Semua jadwal tetap dari pekan lalu sudah ada di pekan ini.', 'info');
+        return;
+    }
+
+    if (!confirm(`Terapkan ${toApply.length} jadwal tetap dari pekan lalu ke pekan ini sebagai Draft?`)) return;
+
+    showToast(`Menerapkan ${toApply.length} jadwal tetap...`, 'info');
+
+    let createdCount = 0;
+    for (const s of toApply) {
+        const dayIdx = prevWeekDates.indexOf(s.date);
+        const targetDate = weekDates[dayIdx];
+        const newSched = {
+            teacherId: s.teacherId,
+            date: targetDate,
+            startTime: s.startTime,
+            endTime: s.endTime,
+            room: s.room,
+            subject: s.subject,
+            rombel: s.rombel,
+            ket: s.ket || '',
+            notes: s.notes || '',
+            branch: s.branch || adminCurrentBranch,
+            isRecurring: true,
+            status: 'draft'
+        };
+        await FireDB.addSchedule(newSched);
+        createdCount++;
+    }
+
+    showToast(`${createdCount} jadwal tetap berhasil diterapkan sebagai Draft!`, 'success');
+    renderAll();
 }
 
 // ────────────────────────────────────────────────────────────────────

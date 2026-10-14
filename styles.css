@@ -1632,3 +1632,60 @@ tbody tr:hover { background: rgba(0, 0, 0, 0.01); }
 .avail-grid-cell.selected:hover {
     background: rgba(227, 30, 36, 0.25);
 }
+
+/* ==========================================================================
+   RECURRING SCHEDULES (JADWAL TETAP) STYLES
+   ========================================================================== */
+.tt-recurring-toggle-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 0.72rem;
+    padding: 1px 3px;
+    line-height: 1;
+    border-radius: 4px;
+    opacity: 0.65;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.tt-recurring-toggle-btn:hover {
+    opacity: 1;
+    transform: scale(1.2);
+    background: rgba(37, 99, 235, 0.1);
+}
+.tt-recurring-toggle-btn.is-recurring {
+    opacity: 1;
+}
+
+.tt-recurring-badge {
+    font-size: 0.58rem;
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: #e0e7ff;
+    color: #3730a3;
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    letter-spacing: 0.2px;
+    border: 1px solid #c7d2fe;
+}
+
+.timetable-recurring-banner {
+    background: linear-gradient(135deg, #eff6ff 0%, #e0e7ff 100%);
+    border: 1px solid #bfdbfe;
+    border-left: 4px solid #2563eb;
+    border-radius: var(--radius-sm, 8px);
+    padding: 0.75rem 1rem;
+    margin-bottom: 1rem;
+    font-size: 0.85rem;
+    color: #1e3a8a;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 1px 3px rgba(37, 99, 235, 0.08);
+    animation: fadeIn 0.3s ease;
+}
+

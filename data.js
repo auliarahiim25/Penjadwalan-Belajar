@@ -434,7 +434,7 @@ const DB = {
         if (!db.templates) db.templates = DEFAULT_TEMPLATES;
         
         if (!tmpl.id) {
-            tmpl.id = 'tmpl-' + Date.now();
+            tmpl.id = 'tmpl-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7);
             db.templates.push(tmpl);
         } else {
             const idx = db.templates.findIndex(t => t.id === tmpl.id);

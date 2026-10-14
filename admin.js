@@ -1024,8 +1024,13 @@ async function submitAssign(e) {
     const isDraft = document.getElementById('assign-as-draft') ? document.getElementById('assign-as-draft').checked : true;
     const isRecurring = document.getElementById('assign-as-recurring') ? document.getElementById('assign-as-recurring').checked : true;
     const status = isDraft ? 'draft' : 'pending';
+    const branch = (teacher && teacher.branch && teacher.branch !== 'all') ? teacher.branch : (adminCurrentBranch !== 'all' ? adminCurrentBranch : 'Pinrang');
 
-    await FireDB.addSchedule({ teacherId, date, startTime, endTime, room, subject, rombel, notes, ket, status, isRecurring });
+    const newSched = { teacherId, date, startTime, endTime, room, subject, rombel, notes, ket, status, isRecurring, branch };
+    await FireDB.addSchedule(newSched);
+    if (isRecurring) {
+        await ensureScheduleInTimetableTemplates(newSched);
+    }
     closeModal('modal-assign');
     showToast(isDraft ? 'Jadwal tersimpan sebagai Draft!' : 'Jadwal berhasil dikirim!', 'success', `${teacher.name} — ${dayName} ${formatDateIndo(date)}, ${startTime}–${endTime}`);
     renderAll();
@@ -1377,6 +1382,12 @@ async function submitEditSchedule(e) {
     const updates = { teacherId, subject, rombel, ket, room, startTime, endTime, isRecurring };
 
     await FireDB.updateSchedule(id, updates);
+    if (isRecurring) {
+        const s = DB.getSchedules().find(sc => sc.id === id);
+        if (s) {
+            await ensureScheduleInTimetableTemplates({ ...s, ...updates });
+        }
+    }
     closeModal('modal-edit-schedule');
     showToast('Jadwal berhasil diperbarui!', 'success');
     renderAll();
@@ -1566,54 +1577,64 @@ function renderTimetable() {
     const allSchedules = getFilteredSchedules();
     const allTeachers  = getFilteredTeachers();
 
-    // Filter templates by room and branch, then sort by grade
+    // Filter templates by branch first so other branches do not block matching or virtual templates
     let templates = JSON.parse(JSON.stringify(DB.getTemplates()));
+    if (adminCurrentBranch !== 'all') {
+        templates = templates.filter(t => t.branch === adminCurrentBranch || !t.branch);
+    }
     
-    // Create virtual templates for schedules that don't match any existing template
+    // Create virtual/dynamic templates for schedules in current week that don't match any existing template
     allSchedules.forEach(sched => {
         if (!weekDates.includes(sched.date)) return; // Only process schedules in current week
         
         const dayName = getDayNameFromDate(sched.date);
+        const schedRombel = (sched.rombel || '').trim();
         
-        // Check if there is an existing template
+        // Check if there is an existing template in this branch
         const hasTemplate = templates.some(t => 
-            t.rombel === sched.rombel && 
+            (t.rombel || '').trim() === schedRombel && 
             t.days.includes(dayName) && 
             t.sessions.some(ses => ses.start === sched.startTime && ses.end === sched.endTime)
         );
         
         if (!hasTemplate) {
-            let vt = templates.find(t => t.isVirtual && t.rombel === sched.rombel && t.room === sched.room);
-            if (!vt) {
-                vt = {
-                    id: 'virtual-' + sched.id,
-                    isVirtual: true,
-                    branch: sched.branch || adminCurrentBranch,
-                    rombel: sched.rombel,
-                    days: [dayName],
-                    sessions: [],
-                    room: sched.room || ''
-                };
-                templates.push(vt);
-            } else if (!vt.days.includes(dayName)) {
-                vt.days.push(dayName);
-            }
-            
-            if (!vt.sessions.some(ses => ses.start === sched.startTime && ses.end === sched.endTime)) {
-                vt.sessions.push({ start: sched.startTime, end: sched.endTime, label: 'Sesi Tambahan' });
+            let dayTmpl = templates.find(t => (t.rombel || '').trim() === schedRombel && Array.isArray(t.days) && t.days.includes(dayName));
+            if (dayTmpl) {
+                if (!dayTmpl.sessions.some(ses => ses.start === sched.startTime && ses.end === sched.endTime)) {
+                    dayTmpl.sessions.push({
+                        start: sched.startTime,
+                        end: sched.endTime,
+                        label: `Sesi ${dayTmpl.sessions.length + 1}`
+                    });
+                    dayTmpl.sessions.sort((a, b) => a.start.localeCompare(b.start));
+                }
+            } else {
+                let vt = templates.find(t => t.isVirtual && (t.rombel || '').trim() === schedRombel && Array.isArray(t.days) && t.days.includes(dayName) && t.room === sched.room);
+                if (!vt) {
+                    vt = {
+                        id: 'virtual-' + sched.id,
+                        isVirtual: true,
+                        branch: sched.branch || adminCurrentBranch,
+                        rombel: sched.rombel,
+                        days: [dayName],
+                        sessions: [{ start: sched.startTime, end: sched.endTime, label: 'Sesi 1' }],
+                        room: sched.room || ''
+                    };
+                    templates.push(vt);
+                } else if (!vt.sessions.some(ses => ses.start === sched.startTime && ses.end === sched.endTime)) {
+                    vt.sessions.push({ start: sched.startTime, end: sched.endTime, label: 'Sesi Tambahan' });
+                    vt.sessions.sort((a, b) => a.start.localeCompare(b.start));
+                }
             }
         }
     });
 
-    if (adminCurrentBranch !== 'all') {
-        templates = templates.filter(t => t.branch === adminCurrentBranch || !t.branch);
-    }
-    
     if (curRoom) {
-        templates = templates.filter(t => t.room.split(',').map(r=>r.trim()).includes(curRoom));
+        templates = templates.filter(t => t.room.split(',').map(r => r.trim()).includes(curRoom));
     }
     
     templates.sort((a, b) => getRombelGradeWeight(a.rombel) - getRombelGradeWeight(b.rombel));
+    window._renderedTemplates = templates;
 
     const tbody = document.getElementById('timetable-tbody');
     let html = '';
@@ -1640,16 +1661,16 @@ function renderTimetable() {
             const dayOrder = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
             dayOrder.forEach((day, dayIdx) => {
                 const dateStr = weekDates[dayIdx];
-                const isActiveDay = tmpl.days.includes(day);
+                const isActiveDay = Array.isArray(tmpl.days) && tmpl.days.includes(day);
 
                 if (!isActiveDay) {
                     html += '<td class="tt-day-cell"><span class="tt-slot-empty">–</span></td>';
                     return;
                 }
 
-                // Find matching schedule
+                // Find matching schedule for this active day
                 const matchedScheds = allSchedules.filter(
-                    s => s.date === dateStr && s.rombel === tmpl.rombel &&
+                    s => s.date === dateStr && (s.rombel || '').trim() === (tmpl.rombel || '').trim() &&
                          s.startTime === session.start && s.endTime === session.end
                 );
 
@@ -1846,7 +1867,16 @@ function quickAssignFromTemplate(rombel, dateStr, startTime, endTime, room) {
     document.getElementById('assign-date').value = dateStr;
     document.getElementById('assign-start-time').value = startTime;
     document.getElementById('assign-end-time').value = endTime;
-    document.getElementById('assign-rombel').value = rombel;
+    const rombelSel = document.getElementById('assign-rombel');
+    if (rombelSel && rombel) {
+        if (!Array.from(rombelSel.options).some(o => o.value === rombel)) {
+            const opt = document.createElement('option');
+            opt.value = rombel;
+            opt.textContent = rombel;
+            rombelSel.appendChild(opt);
+        }
+        rombelSel.value = rombel;
+    }
     document.getElementById('assign-ket').value = '';
     document.getElementById('assign-notes').value = '';
 
@@ -1901,23 +1931,102 @@ async function sendAllDraftsThisWeek() {
 }
 
 // ────────────────────────────────────────────────────────────────────
-//  RECURRING SCHEDULES (JADWAL TETAP) ACTIONS
+//  RECURRING SCHEDULES (JADWAL TETAP) & TIMETABLE SYNC
 // ────────────────────────────────────────────────────────────────────
+
+async function ensureScheduleInTimetableTemplates(sched) {
+    if (!sched || !sched.rombel || !sched.startTime || !sched.endTime) return null;
+    const rombel = (sched.rombel || '').trim();
+    const dayName = getDayNameFromDate(sched.date);
+    const branch = (sched.branch && sched.branch !== 'all') ? sched.branch : (adminCurrentBranch !== 'all' ? adminCurrentBranch : 'Pinrang');
+    const room = (sched.room || '').trim();
+
+    let templates = DB.getTemplates();
+
+    // 1. Check if an exact template already exists (matching branch, rombel, day, and session)
+    const exactTemplate = templates.find(t =>
+        (t.branch === branch || !t.branch) &&
+        (t.rombel || '').trim() === rombel &&
+        Array.isArray(t.days) && t.days.includes(dayName) &&
+        t.sessions.some(ses => ses.start === sched.startTime && ses.end === sched.endTime)
+    );
+
+    if (exactTemplate) {
+        // If template room was empty but schedule has room, populate it
+        if (!exactTemplate.room && room) {
+            exactTemplate.room = room;
+            await FireDB.saveTemplate(exactTemplate);
+        }
+        return exactTemplate;
+    }
+
+    // 2. Check if a template exists for this rombel on this day in this branch
+    const dayTemplate = templates.find(t =>
+        (t.branch === branch || !t.branch) &&
+        (t.rombel || '').trim() === rombel &&
+        Array.isArray(t.days) && t.days.includes(dayName)
+    );
+
+    if (dayTemplate) {
+        // Add session to this existing day template if not already present
+        const hasSession = dayTemplate.sessions.some(ses => ses.start === sched.startTime && ses.end === sched.endTime);
+        if (!hasSession) {
+            dayTemplate.sessions.push({
+                start: sched.startTime,
+                end: sched.endTime,
+                label: `Sesi ${dayTemplate.sessions.length + 1}`
+            });
+            dayTemplate.sessions.sort((a, b) => a.start.localeCompare(b.start));
+        }
+        if (!dayTemplate.room && room) dayTemplate.room = room;
+        await FireDB.saveTemplate(dayTemplate);
+        return dayTemplate;
+    }
+
+    // 3. Check if there is another template for this rombel in general to inherit room if not specified
+    const rombelTemplate = templates.find(t =>
+        (t.branch === branch || !t.branch) &&
+        (t.rombel || '').trim() === rombel
+    );
+    const resolvedRoom = room || rombelTemplate?.room || '';
+
+    // 4. Create a new template for this rombel on this day
+    const newTmpl = {
+        id: 'tmpl-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
+        branch,
+        rombel: rombel,
+        days: [dayName],
+        sessions: [{
+            start: sched.startTime,
+            end: sched.endTime,
+            label: 'Sesi 1'
+        }],
+        room: resolvedRoom
+    };
+    await FireDB.saveTemplate(newTmpl);
+    return newTmpl;
+}
 
 async function toggleRecurringSchedule(id) {
     const s = DB.getSchedules().find(sc => sc.id === id);
     if (!s) return;
     const newStatus = !s.isRecurring;
     await FireDB.updateSchedule(id, { isRecurring: newStatus });
-    showToast(newStatus ? 'Ditandai sebagai Jadwal Tetap 🔁' : 'Diubah menjadi Jadwal Sekali Jalan ⚪', 'info');
-    renderTimetable();
+    if (newStatus) {
+        await ensureScheduleInTimetableTemplates(s);
+    }
+    showToast(newStatus ? 'Ditandai sebagai Jadwal Tetap 🔁 (Diset di Peta Jadwal)' : 'Diubah menjadi Jadwal Sekali Jalan ⚪', 'info');
+    renderAll();
 }
 
 let currentApplyRecurringContext = null;
 
 function openApplyRecurringModal() {
-    const curWeekDates = getWeekDates(currentTimetableWeekStart);
-    const nextWeekMonday = adjustDateDays(currentTimetableWeekStart, 7);
+    const isTimetableActive = document.getElementById('page-timetable')?.classList.contains('active');
+    const baseWeekStart = isTimetableActive ? currentTimetableWeekStart : currentSchedWeekStart;
+
+    const curWeekDates = getWeekDates(baseWeekStart);
+    const nextWeekMonday = adjustDateDays(baseWeekStart, 7);
     const nextWeekDates = getWeekDates(nextWeekMonday);
 
     const allSchedules = getFilteredSchedules();
@@ -1998,7 +2107,7 @@ function updateApplyRecurringPreview() {
         // Check if slot in next week is occupied
         const isOccupied = nextWeekSchedules.some(ns =>
             ns.date === targetDate &&
-            ns.rombel === s.rombel &&
+            (ns.rombel || '').trim() === (s.rombel || '').trim() &&
             ns.startTime === s.startTime &&
             ns.endTime === s.endTime
         );
@@ -2015,7 +2124,7 @@ function updateApplyRecurringPreview() {
                     </div>
                 </div>
                 <div>
-                    ${isOccupied ? '<span style="color:var(--warning); font-weight:700; font-size:0.7rem; background:#fffbeb; padding:2px 6px; border-radius:4px; border:1px solid #fef3c7;">⚠️ Slot terisi (Lewati)</span>' : '<span style="color:var(--success); font-weight:700; font-size:0.7rem; background:#ecfdf5; padding:2px 6px; border-radius:4px; border:1px solid #d1fae5;">✅ Akan dibuat (Draft)</span>'}
+                    ${isOccupied ? '<span style="color:var(--warning); font-weight:700; font-size:0.7rem; background:#fffbeb; padding:2px 6px; border-radius:4px; border:1px solid #fef3c7;">⚠️ Slot terisi (Lewati)</span>' : '<span style="color:var(--success); font-weight:700; font-size:0.7rem; background:#ecfdf5; padding:2px 6px; border-radius:4px; border:1px solid #d1fae5;">✅ Akan dibuat (Draft & Peta Jadwal)</span>'}
                 </div>
             </div>
         `;
@@ -2054,7 +2163,7 @@ async function executeApplyRecurringSchedules() {
 
             const isOccupied = allSchedules.some(ns =>
                 ns.date === targetDate &&
-                ns.rombel === s.rombel &&
+                (ns.rombel || '').trim() === (s.rombel || '').trim() &&
                 ns.startTime === s.startTime &&
                 ns.endTime === s.endTime
             );
@@ -2064,6 +2173,7 @@ async function executeApplyRecurringSchedules() {
                 continue;
             }
 
+            const branch = (s.branch && s.branch !== 'all') ? s.branch : (adminCurrentBranch !== 'all' ? adminCurrentBranch : 'Pinrang');
             const newSched = {
                 teacherId: s.teacherId,
                 date: targetDate,
@@ -2074,20 +2184,22 @@ async function executeApplyRecurringSchedules() {
                 rombel: s.rombel,
                 ket: s.ket || '',
                 notes: s.notes || '',
-                branch: s.branch || adminCurrentBranch,
+                branch: branch,
                 isRecurring: true,
                 status: 'draft' // Draft as requested by user
             };
 
             await FireDB.addSchedule(newSched);
+            await ensureScheduleInTimetableTemplates(newSched);
             createdCount++;
         }
 
         closeModal('modal-apply-recurring');
-        showToast(`${createdCount} jadwal berhasil diterapkan ke pekan depan sebagai Draft!${skippedCount > 0 ? ` (${skippedCount} dilewati karena slot sudah terisi)` : ''}`, 'success');
+        showToast(`${createdCount} jadwal berhasil diterapkan ke pekan depan sebagai Draft & diset di Peta Jadwal!${skippedCount > 0 ? ` (${skippedCount} dilewati karena slot sudah terisi)` : ''}`, 'success');
 
-        // Navigate to next week so admin can review immediately
+        // Navigate to next week on both timetable and schedules so admin can review immediately
         currentTimetableWeekStart = nextWeekMonday;
+        currentSchedWeekStart = nextWeekMonday;
         renderAll();
 
     } catch (err) {
@@ -2116,7 +2228,7 @@ async function applyRecurringFromPreviousWeek() {
         const targetDate = weekDates[dayIdx];
         return !curWeekSchedules.some(cs =>
             cs.date === targetDate &&
-            cs.rombel === ps.rombel &&
+            (cs.rombel || '').trim() === (ps.rombel || '').trim() &&
             cs.startTime === ps.startTime &&
             cs.endTime === ps.endTime
         );
@@ -2135,6 +2247,7 @@ async function applyRecurringFromPreviousWeek() {
     for (const s of toApply) {
         const dayIdx = prevWeekDates.indexOf(s.date);
         const targetDate = weekDates[dayIdx];
+        const branch = (s.branch && s.branch !== 'all') ? s.branch : (adminCurrentBranch !== 'all' ? adminCurrentBranch : 'Pinrang');
         const newSched = {
             teacherId: s.teacherId,
             date: targetDate,
@@ -2145,15 +2258,16 @@ async function applyRecurringFromPreviousWeek() {
             rombel: s.rombel,
             ket: s.ket || '',
             notes: s.notes || '',
-            branch: s.branch || adminCurrentBranch,
+            branch: branch,
             isRecurring: true,
             status: 'draft'
         };
         await FireDB.addSchedule(newSched);
+        await ensureScheduleInTimetableTemplates(newSched);
         createdCount++;
     }
 
-    showToast(`${createdCount} jadwal tetap berhasil diterapkan sebagai Draft!`, 'success');
+    showToast(`${createdCount} jadwal tetap berhasil diterapkan sebagai Draft & diset di Peta Jadwal!`, 'success');
     renderAll();
 }
 
